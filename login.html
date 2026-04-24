@@ -6,6 +6,9 @@
     <title>Login | Artist Hub</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -51,6 +54,10 @@
         }
         .custom-input:focus { border-color: #0052FF; }
         .dark .custom-input:focus { border-color: white; }
+
+        /* Cropper Customization */
+        .cropper-view-box, .cropper-face { border-radius: 50%; } /* Makes crop box circular */
+        .cropper-modal { background-color: rgba(0, 0, 0, 0.8); }
     </style>
 </head>
 <body class="bg-white text-gray-900 dark:bg-darkBg dark:text-gray-100 min-h-screen w-screen flex flex-col items-center justify-center transition-colors duration-300 relative px-6">
@@ -108,14 +115,13 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
                     </div>
                 </div>
-                <input type="file" id="pfp-upload" accept="image/*" class="hidden" onchange="previewPFP(event)">
+                <input type="file" id="pfp-upload" accept="image/*" class="hidden" onchange="openCropper(event)">
 
                 <div class="w-full space-y-4">
                     <input type="text" id="reg-username" placeholder="Unique Username" class="custom-input lowercase" required pattern="^[a-z0-9_]+$" title="Lowercase letters, numbers, and underscores only.">
                     <input type="text" id="reg-displayname" placeholder="Display Name" class="custom-input" required>
                     <input type="email" id="reg-email" placeholder="Email Address" class="custom-input" required>
                     <input type="password" id="reg-password" placeholder="Password (Min 6 chars)" class="custom-input" minlength="6" required>
-                    
                     <input type="password" id="reg-confirm-password" placeholder="Confirm Password" class="custom-input" minlength="6" required>
                     
                     <button type="submit" class="w-full bg-electric dark:bg-white hover:opacity-90 text-white dark:text-black text-sm font-bold py-3.5 rounded-xl transition-all active:scale-95 mt-4">Create Account</button>
@@ -145,10 +151,19 @@
 
     </div>
 
-    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[80] transition-opacity duration-300 opacity-0">
+    <div id="cropper-modal" class="fixed inset-0 bg-black z-[90] hidden flex-col transition-opacity duration-300 opacity-0">
+        <div class="flex-1 w-full h-full flex items-center justify-center p-4">
+            <img id="cropper-image" class="max-w-full max-h-full block">
+        </div>
+        <div class="h-24 bg-[#0a0a0a] border-t border-white/10 flex items-center justify-between px-6 pb-4">
+            <button onclick="cancelCrop()" class="text-white text-sm font-bold opacity-60 hover:opacity-100 transition-opacity">Cancel</button>
+            <button onclick="applyCrop()" class="bg-white text-black px-8 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform shadow-lg shadow-white/10">Done</button>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[100] transition-opacity duration-300 opacity-0">
         <div id="alert-card" class="bg-white dark:bg-darkSurface p-6 rounded-[20px] max-w-[280px] w-full mx-4 border border-gray-100 dark:border-white/10 transform scale-95 transition-transform duration-300 flex flex-col items-center text-center shadow-sm dark:shadow-none">
-            <div id="alert-icon-container" class="w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                </div>
+            <div id="alert-icon-container" class="w-12 h-12 rounded-full flex items-center justify-center mb-4"></div>
             <h3 id="alert-title" class="text-lg font-bold mb-1 tracking-tight text-gray-900 dark:text-white">Alert</h3>
             <p id="alert-message" class="text-xs text-gray-500 dark:text-gray-400 mb-6">Message goes here.</p>
             <button onclick="closeAlert()" class="w-full bg-gray-900 dark:bg-white hover:opacity-90 text-white dark:text-black text-sm font-bold py-3 px-4 rounded-xl transition-all">Okay</button>
@@ -175,9 +190,10 @@
         const googleProvider = new GoogleAuthProvider();
 
         const IMGBB_API_KEY = "4a683051e76ed12880a42aefa6ed427b";
-        let selectedPfpFile = null;
+        let selectedPfpFile = null; // Will hold the cropped file
+        let cropperInstance = null;
 
-        // UI Helpers
+        // --- UI HELPERS ---
         window.switchView = (targetViewId) => {
             const views = ['view-login', 'view-register', 'view-forgot'];
             views.forEach(id => {
@@ -190,20 +206,6 @@
                     el.classList.add('layer-hidden');
                 }
             });
-        };
-
-        window.previewPFP = (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                selectedPfpFile = file;
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    const previewDiv = document.getElementById('pfp-preview');
-                    previewDiv.style.backgroundImage = `url(${e.target.result})`;
-                    document.getElementById('pfp-icon').style.display = 'none';
-                };
-                reader.readAsDataURL(file);
-            }
         };
 
         const showLoading = (text) => {
@@ -252,6 +254,64 @@
             setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 300);
         };
 
+        // --- CROPPER LOGIC ---
+        window.openCropper = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const cropperImg = document.getElementById('cropper-image');
+                    cropperImg.src = e.target.result;
+                    
+                    const modal = document.getElementById('cropper-modal');
+                    modal.classList.remove('hidden'); modal.classList.add('flex');
+                    requestAnimationFrame(() => {
+                        modal.classList.remove('opacity-0'); modal.classList.add('opacity-100');
+                    });
+
+                    if (cropperInstance) cropperInstance.destroy();
+                    cropperInstance = new Cropper(cropperImg, {
+                        aspectRatio: 1, // Circular aspect
+                        viewMode: 1,
+                        dragMode: 'move',
+                        autoCropArea: 0.9,
+                        background: false,
+                        guides: false,
+                        center: false,
+                        highlight: false,
+                        cropBoxMovable: false,
+                        cropBoxResizable: false,
+                        toggleDragModeOnDblclick: false,
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+            event.target.value = '';
+        };
+
+        window.cancelCrop = () => {
+            if (cropperInstance) cropperInstance.destroy();
+            const modal = document.getElementById('cropper-modal');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 300);
+        };
+
+        window.applyCrop = () => {
+            if (!cropperInstance) return;
+            
+            cropperInstance.getCroppedCanvas({
+                width: 500,
+                height: 500,
+                fillColor: '#000'
+            }).toBlob((blob) => {
+                selectedPfpFile = new File([blob], "profile_pic.jpg", { type: "image/jpeg" });
+                const previewUrl = URL.createObjectURL(blob);
+                document.getElementById('pfp-preview').style.backgroundImage = `url(${previewUrl})`;
+                document.getElementById('pfp-icon').style.display = 'none';
+                cancelCrop();
+            }, 'image/jpeg', 0.85);
+        };
+
         // --- AUTHENTICATION & IMGBB LOGIC ---
 
         window.handleLogin = async () => {
@@ -275,7 +335,6 @@
             const password = document.getElementById('reg-password').value;
             const confirmPassword = document.getElementById('reg-confirm-password').value;
 
-            // NEW: Password Confirmation Check
             if (password !== confirmPassword) {
                 showAlert("Password Mismatch", "The passwords you entered do not match.");
                 return;
@@ -284,7 +343,6 @@
             showLoading("Checking Username...");
             
             try {
-                // 1. Check if Username is Unique
                 const usernameRef = doc(db, "usernames", username);
                 const usernameSnap = await getDoc(usernameRef);
                 
@@ -294,11 +352,9 @@
                 }
 
                 showLoading("Creating Account...");
-                // 2. Create Auth User
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 const user = userCredential.user;
 
-                // 3. Upload Profile Picture to ImgBB (if selected)
                 let photoURL = "";
                 if (selectedPfpFile) {
                     showLoading("Uploading Image...");
@@ -323,7 +379,6 @@
                 }
 
                 showLoading("Finalizing Setup...");
-                // 4. Save User Data to Firestore
                 await setDoc(doc(db, "users", user.uid), {
                     uid: user.uid,
                     username: username,
@@ -333,10 +388,7 @@
                     createdAt: new Date().toISOString()
                 });
 
-                // 5. Claim the Username in the global list
                 await setDoc(usernameRef, { uid: user.uid });
-
-                // Update system logic
                 await setDoc(doc(db, "file", "userData"), { isLoggedIn: true }, { merge: true });
                 
                 window.location.replace('home.html');
@@ -367,8 +419,6 @@
                 }
 
                 await setDoc(doc(db, "file", "userData"), { isLoggedIn: true }, { merge: true });
-                
-                // NEW: Redirect to editpro.html instead of home.html for Google Login
                 window.location.replace('editpro.html');
 
             } catch (error) {
