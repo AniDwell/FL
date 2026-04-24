@@ -17,22 +17,29 @@ export async function loadStories(containerId) {
             return;
         }
 
+        // 1. Get User's PFP Safely
+        let myPfp = user.photoURL || pfpPlaceholder;
+        let userData = {};
+        
         try {
-            // 1. Fetch Current User's Profile
             const userDoc = await getDoc(doc(db, "users", user.uid));
-            const userData = userDoc.exists() ? userDoc.data() : {};
-            const myPfp = userData.photoURL || pfpPlaceholder;
+            if (userDoc.exists()) {
+                userData = userDoc.data();
+                if (userData.photoURL) myPfp = userData.photoURL;
+            }
+        } catch (e) {
+            console.warn("Could not fetch user doc for PFP, using fallback.");
+        }
 
-            let html = `
-                <style>
-                    .hide-scrollbar::-webkit-scrollbar { display: none; }
-                    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                </style>
-                <div class="w-full flex gap-4 px-4 overflow-x-auto snap-x hide-scrollbar pt-2 pb-1">
-            `;
-
-            // 2. CURRENT USER'S STORY (Segmented Ring + Button)
-            html += `
+        // 2. ALWAYS RENDER "YOUR STORY" IMMEDIATELY
+        // Ye hissa kabhi gayab nahi hoga, chahe DB khali kyu na ho!
+        let html = `
+            <style>
+                .hide-scrollbar::-webkit-scrollbar { display: none; }
+                .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+            </style>
+            <div id="story-scroll-container" class="w-full flex gap-4 px-4 overflow-x-auto snap-x hide-scrollbar pt-2 pb-1">
+                
                 <div class="flex flex-col items-center gap-1.5 min-w-[68px] cursor-pointer snap-start shrink-0" onclick="window.location.href='up.html'">
                     <div class="relative w-16 h-16 flex items-center justify-center active:scale-95 transition-transform">
                         
@@ -48,47 +55,59 @@ export async function loadStories(containerId) {
                     </div>
                     <span class="text-[10px] font-bold opacity-50 truncate w-16 text-center">Your Story</span>
                 </div>
-            `;
+            </div>
+        `;
+        
+        container.innerHTML = html; // Inject instantly!
 
-            // 3. REAL FIREBASE DATA FETCHING LOGIC
+        // 3. TRY TO FETCH OTHER STORIES IN BACKGROUND
+        try {
             let activeStories = [];
+            const followingList = userData.following || [];
             
-            // NOTE: The mock data array is completely removed.
-            // This code will now actually look for a "stories" collection in your database.
-            // If the user hasn't followed anyone or no one posted, it will safely remain empty.
-            try {
-                // Assuming you have a list of followed UIDs in userData.following
-                const followingList = userData.following || [];
-                
-                if (followingList.length > 0) {
-                    // Logic to fetch stories from people you follow
-                    // const q = query(collection(db, "stories"), where("authorUid", "in", followingList));
-                    // const snapshot = await getDocs(q);
-                    // snapshot.forEach(doc => activeStories.push({ id: doc.id, ...doc.data() }));
-                } else {
-                    // Fallback logic: Fetch top verified users' stories if following list is empty
-                    // const q = query(collection(db, "stories"), where("isVerified", "==", true), limit(10));
-                    // const snapshot = await getDocs(q);
-                    // snapshot.forEach(doc => activeStories.push({ id: doc.id, ...doc.data() }));
-                }
-            } catch (dbError) {
-                console.warn("No stories collection found or query failed, rendering empty state.");
-            }
+            // Backend Query Placeholder
+            // ... (Your real query will go here later) ...
 
-            // 4. Render Other Stories (Will only run if activeStories has data)
-            activeStories.forEach(story => {
-                // Unviewed = Thick solid ring. Viewed = Very thin white/gray border.
-                const ringClass = story.isViewed 
-                    ? "border-[1px] border-gray-400 dark:border-white/50" // Thin border for viewed
-                    : "border-[2.5px] border-black dark:border-white";    // Thick border for unviewed
+            // If we actually found stories, append them to the container
+            if (activeStories.length > 0) {
+                const scrollContainer = document.getElementById('story-scroll-container');
+                let otherStoriesHtml = "";
 
-                html += `
-                    <div class="flex flex-col items-center gap-1.5 min-w-[68px] cursor-pointer snap-start shrink-0" onclick="triggerStoryPlayer('${story.id}')">
-                        <div class="w-16 h-16 rounded-full p-[2px] ${ringClass} active:scale-95 transition-transform">
-                            <img src="${story.pfp || pfpPlaceholder}" class="w-full h-full rounded-full object-cover border border-transparent dark:border-[#0a0a0a]">
+                activeStories.forEach(story => {
+                    const ringClass = story.isViewed 
+                        ? "border-[1px] border-gray-400 dark:border-white/50" // Thin border
+                        : "border-[2.5px] border-black dark:border-white";    // Thick border
+
+                    otherStoriesHtml += `
+                        <div class="flex flex-col items-center gap-1.5 min-w-[68px] cursor-pointer snap-start shrink-0" onclick="triggerStoryPlayer('${story.id}')">
+                            <div class="w-16 h-16 rounded-full p-[2px] ${ringClass} active:scale-95 transition-transform">
+                                <img src="${story.pfp || pfpPlaceholder}" class="w-full h-full rounded-full object-cover border border-transparent dark:border-[#0a0a0a]">
+                            </div>
+                            <span class="text-[10px] font-bold ${story.isViewed ? 'opacity-60' : 'opacity-90'} truncate w-16 text-center">${story.username}</span>
                         </div>
-                        <span class="text-[10px] font-bold ${story.isViewed ? 'opacity-60' : 'opacity-90'} truncate w-16 text-center">${story.username}</span>
-                    </div>
+                    `;
+                });
+
+                scrollContainer.insertAdjacentHTML('beforeend', otherStoriesHtml);
+            }
+        } catch (dbError) {
+            // Agar koi DB error aata hai, toh widget crash nahi hoga!
+            console.warn("Could not load other stories. Backend might be empty.", dbError);
+        }
+    });
+
+    window.triggerStoryPlayer = async (storyId) => {
+        try {
+            const playerModule = await import('./plyrstry.js');
+            if (playerModule && playerModule.playStory) {
+                playerModule.playStory(storyId);
+            }
+        } catch (e) {
+            console.warn(`plyrstry.js not found for story: ${storyId}`);
+        }
+    };
+}
+                   </div>
                 `;
             });
 
