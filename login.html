@@ -116,6 +116,8 @@
                     <input type="email" id="reg-email" placeholder="Email Address" class="custom-input" required>
                     <input type="password" id="reg-password" placeholder="Password (Min 6 chars)" class="custom-input" minlength="6" required>
                     
+                    <input type="password" id="reg-confirm-password" placeholder="Confirm Password" class="custom-input" minlength="6" required>
+                    
                     <button type="submit" class="w-full bg-electric dark:bg-white hover:opacity-90 text-white dark:text-black text-sm font-bold py-3.5 rounded-xl transition-all active:scale-95 mt-4">Create Account</button>
                 </div>
             </form>
@@ -271,6 +273,13 @@
             const displayName = document.getElementById('reg-displayname').value.trim();
             const email = document.getElementById('reg-email').value.trim();
             const password = document.getElementById('reg-password').value;
+            const confirmPassword = document.getElementById('reg-confirm-password').value;
+
+            // NEW: Password Confirmation Check
+            if (password !== confirmPassword) {
+                showAlert("Password Mismatch", "The passwords you entered do not match.");
+                return;
+            }
 
             showLoading("Checking Username...");
             
@@ -310,7 +319,6 @@
                         }
                     } catch (uploadError) {
                         console.error("ImgBB Error:", uploadError);
-                        // We won't block registration if image fails, just leave it blank
                     }
                 }
 
@@ -359,7 +367,9 @@
                 }
 
                 await setDoc(doc(db, "file", "userData"), { isLoggedIn: true }, { merge: true });
-                window.location.replace('home.html');
+                
+                // NEW: Redirect to editpro.html instead of home.html for Google Login
+                window.location.replace('editpro.html');
 
             } catch (error) {
                 if (error.code !== 'auth/popup-closed-by-user') {
