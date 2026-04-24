@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login | Artist Hub</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        electric: '#0052FF',
+                        darkBg: '#000000',
+                        darkSurface: '#0a0a0a'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script>
+        const theme = localStorage.getItem('theme_preference') || 'system';
+        if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+
+    <style>
+        .layer-hidden { opacity: 0; pointer-events: none; transform: scale(0.97); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); position: absolute; }
+        .layer-visible { opacity: 1; pointer-events: auto; transform: scale(1); transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); position: relative; z-index: 10; }
+        body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+        
+        /* Clean Input Styling */
+        .custom-input {
+            width: 100%;
+            background: transparent;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 0.75rem;
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .dark .custom-input {
+            border-color: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        .custom-input:focus { border-color: #0052FF; }
+        .dark .custom-input:focus { border-color: white; }
+    </style>
+</head>
+<body class="bg-white text-gray-900 dark:bg-darkBg dark:text-gray-100 min-h-screen w-screen flex flex-col items-center justify-center transition-colors duration-300 relative px-6">
+
+    <div id="loading-overlay" class="fixed inset-0 bg-white/80 dark:bg-black/80 backdrop-blur-sm hidden items-center justify-center z-[70] transition-opacity duration-300 opacity-0">
+        <div class="flex flex-col items-center">
+            <div class="w-8 h-8 border-[3px] border-gray-200 dark:border-white/10 border-t-electric dark:border-t-white rounded-full animate-spin mb-4"></div>
+            <p id="loading-text" class="text-[10px] tracking-widest uppercase opacity-50 font-bold">Processing...</p>
+        </div>
+    </div>
+
+    <div class="w-full max-w-sm relative flex justify-center mt-8 mb-8">
+
+        <div id="view-login" class="layer-visible w-full flex flex-col items-center">
+            <img src="logo.png" alt="Artist Hub" class="w-16 h-16 object-contain mb-6 brightness-0 dark:invert" onerror="this.style.display='none'">
+            <h2 class="text-2xl font-bold mb-1 tracking-tight">Welcome Back</h2>
+            <p class="text-xs opacity-50 mb-8">Sign in to continue to Artist Hub.</p>
+
+            <form id="login-form" class="w-full space-y-4" onsubmit="event.preventDefault(); handleLogin();">
+                <input type="email" id="login-email" placeholder="Email Address" class="custom-input" required>
+                <div>
+                    <input type="password" id="login-password" placeholder="Password" class="custom-input" required>
+                    <div class="flex justify-end mt-2">
+                        <button type="button" onclick="switchView('view-forgot')" class="text-[11px] font-bold text-electric dark:text-gray-400 hover:dark:text-white transition-colors">Forgot Password?</button>
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-electric dark:bg-white hover:opacity-90 text-white dark:text-black text-sm font-bold py-3.5 rounded-xl transition-all active:scale-95 mt-2">Sign In</button>
+            </form>
+
+            <div class="w-full flex items-center gap-4 my-6 opacity-30">
+                <div class="flex-1 h-[1px] bg-gray-900 dark:bg-white"></div>
+                <span class="text-[10px] uppercase font-bold tracking-wider">OR</span>
+                <div class="flex-1 h-[1px] bg-gray-900 dark:bg-white"></div>
+            </div>
+
+            <button onclick="handleGoogleLogin()" class="w-full flex items-center justify-center gap-3 bg-gray-50 dark:bg-darkSurface border border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/10 text-sm font-bold py-3.5 rounded-xl transition-all active:scale-95">
+                <img src="https://i.ibb.co/LD86xQyc/Untitled99-20260424171628.png" alt="Google" class="w-5 h-5 object-contain">
+                Continue with Google
+            </button>
+
+            <p class="text-xs font-bold mt-8 opacity-60">New here? <button onclick="switchView('view-register')" class="text-electric dark:text-white hover:underline">Create an account</button></p>
+        </div>
+
+        <div id="view-register" class="layer-hidden w-full flex flex-col items-center">
+            <h2 class="text-2xl font-bold mb-1 tracking-tight">Join Artist Hub</h2>
+            <p class="text-xs opacity-50 mb-6">Create your profile to get started.</p>
+
+            <form id="register-form" class="w-full flex flex-col items-center" onsubmit="event.preventDefault(); handleRegister();">
+                
+                <div class="relative mb-6 cursor-pointer group" onclick="document.getElementById('pfp-upload').click()">
+                    <div id="pfp-preview" class="w-24 h-24 rounded-full bg-gray-100 dark:bg-darkSurface border border-gray-200 dark:border-white/10 flex items-center justify-center overflow-hidden bg-cover bg-center transition-all group-hover:border-electric dark:group-hover:border-white">
+                        <svg id="pfp-icon" class="w-8 h-8 text-gray-400 dark:text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </div>
+                    <div class="absolute bottom-0 right-0 bg-electric dark:bg-white text-white dark:text-black p-1.5 rounded-full shadow-lg">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
+                    </div>
+                </div>
+                <input type="file" id="pfp-upload" accept="image/*" class="hidden" onchange="previewPFP(event)">
+
+                <div class="w-full space-y-4">
+                    <input type="text" id="reg-username" placeholder="Unique Username" class="custom-input lowercase" required pattern="^[a-z0-9_]+$" title="Lowercase letters, numbers, and underscores only.">
+                    <input type="text" id="reg-displayname" placeholder="Display Name" class="custom-input" required>
+                    <input type="email" id="reg-email" placeholder="Email Address" class="custom-input" required>
+                    <input type="password" id="reg-password" placeholder="Password (Min 6 chars)" class="custom-input" minlength="6" required>
+                    
+                    <button type="submit" class="w-full bg-electric dark:bg-white hover:opacity-90 text-white dark:text-black text-sm font-bold py-3.5 rounded-xl transition-all active:scale-95 mt-4">Create Account</button>
+                </div>
+            </form>
+
+            <p class="text-xs font-bold mt-8 opacity-60">Already have an account? <button onclick="switchView('view-login')" class="text-electric dark:text-white hover:underline">Sign in</button></p>
+        </div>
+
+        <div id="view-forgot" class="layer-hidden w-full flex flex-col items-center">
+            <div class="w-16 h-16 bg-gray-100 dark:bg-white/5 rounded-full flex items-center justify-center mb-6">
+                <svg class="w-7 h-7 text-electric dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+            </div>
+            <h2 class="text-2xl font-bold mb-1 tracking-tight">Reset Password</h2>
+            <p class="text-xs opacity-50 mb-8 text-center px-4">Enter your email and we'll send you a link to reset your password.</p>
+
+            <form id="forgot-form" class="w-full space-y-4" onsubmit="event.preventDefault(); handleForgotPassword();">
+                <input type="email" id="forgot-email" placeholder="Email Address" class="custom-input" required>
+                <button type="submit" class="w-full bg-electric dark:bg-white hover:opacity-90 text-white dark:text-black text-sm font-bold py-3.5 rounded-xl transition-all active:scale-95">Send Reset Link</button>
+            </form>
+
+            <button onclick="switchView('view-login')" class="mt-8 text-xs font-bold opacity-60 hover:opacity-100 transition-opacity flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Back to Sign In
+            </button>
+        </div>
+
+    </div>
+
+    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[80] transition-opacity duration-300 opacity-0">
+        <div id="alert-card" class="bg-white dark:bg-darkSurface p-6 rounded-[20px] max-w-[280px] w-full mx-4 border border-gray-100 dark:border-white/10 transform scale-95 transition-transform duration-300 flex flex-col items-center text-center shadow-sm dark:shadow-none">
+            <div id="alert-icon-container" class="w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                </div>
+            <h3 id="alert-title" class="text-lg font-bold mb-1 tracking-tight text-gray-900 dark:text-white">Alert</h3>
+            <p id="alert-message" class="text-xs text-gray-500 dark:text-gray-400 mb-6">Message goes here.</p>
+            <button onclick="closeAlert()" class="w-full bg-gray-900 dark:bg-white hover:opacity-90 text-white dark:text-black text-sm font-bold py-3 px-4 rounded-xl transition-all">Okay</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyCANvRaHEUA7wkWMhC9_hFyrzU8cjoUo2U",
+            authDomain: "thuggish-2cd07.firebaseapp.com",
+            projectId: "thuggish-2cd07",
+            storageBucket: "thuggish-2cd07.firebasestorage.app",
+            messagingSenderId: "221865053567",
+            appId: "1:221865053567:web:ad8960c0136ac524269e4a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        const IMGBB_API_KEY = "4a683051e76ed12880a42aefa6ed427b";
+        let selectedPfpFile = null;
+
+        // UI Helpers
+        window.switchView = (targetViewId) => {
+            const views = ['view-login', 'view-register', 'view-forgot'];
+            views.forEach(id => {
+                const el = document.getElementById(id);
+                if (id === targetViewId) {
+                    el.classList.remove('layer-hidden');
+                    el.classList.add('layer-visible');
+                } else {
+                    el.classList.remove('layer-visible');
+                    el.classList.add('layer-hidden');
+                }
+            });
+        };
+
+        window.previewPFP = (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                selectedPfpFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const previewDiv = document.getElementById('pfp-preview');
+                    previewDiv.style.backgroundImage = `url(${e.target.result})`;
+                    document.getElementById('pfp-icon').style.display = 'none';
+                };
+                reader.readAsDataURL(file);
+            }
+        };
+
+        const showLoading = (text) => {
+            document.getElementById('loading-text').innerText = text;
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.remove('hidden'); overlay.classList.add('flex');
+            requestAnimationFrame(() => {
+                overlay.classList.remove('opacity-0'); overlay.classList.add('opacity-100');
+            });
+        };
+
+        const hideLoading = () => {
+            const overlay = document.getElementById('loading-overlay');
+            overlay.classList.remove('opacity-100'); overlay.classList.add('opacity-0');
+            setTimeout(() => { overlay.classList.remove('flex'); overlay.classList.add('hidden'); }, 300);
+        };
+
+        const showAlert = (title, message, isError = true) => {
+            hideLoading();
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            
+            const iconContainer = document.getElementById('alert-icon-container');
+            if (isError) {
+                iconContainer.className = "w-12 h-12 bg-red-50 dark:bg-red-500/10 rounded-full flex items-center justify-center mb-4";
+                iconContainer.innerHTML = `<svg class="w-6 h-6 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            } else {
+                iconContainer.className = "w-12 h-12 bg-green-50 dark:bg-green-500/10 rounded-full flex items-center justify-center mb-4";
+                iconContainer.innerHTML = `<svg class="w-6 h-6 text-green-500 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            }
+
+            const modal = document.getElementById('alert-modal');
+            const card = document.getElementById('alert-card');
+            modal.classList.remove('hidden'); modal.classList.add('flex');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0'); modal.classList.add('opacity-100');
+                card.classList.remove('scale-95'); card.classList.add('scale-100');
+            });
+        };
+
+        window.closeAlert = () => {
+            const modal = document.getElementById('alert-modal');
+            const card = document.getElementById('alert-card');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            card.classList.remove('scale-100'); card.classList.add('scale-95');
+            setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 300);
+        };
+
+        // --- AUTHENTICATION & IMGBB LOGIC ---
+
+        window.handleLogin = async () => {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            showLoading("Signing In...");
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                await setDoc(doc(db, "file", "userData"), { isLoggedIn: true }, { merge: true });
+                window.location.replace('home.html');
+            } catch (error) {
+                showAlert("Login Failed", error.message.replace("Firebase: ", ""));
+            }
+        };
+
+        window.handleRegister = async () => {
+            const username = document.getElementById('reg-username').value.trim().toLowerCase();
+            const displayName = document.getElementById('reg-displayname').value.trim();
+            const email = document.getElementById('reg-email').value.trim();
+            const password = document.getElementById('reg-password').value;
+
+            showLoading("Checking Username...");
+            
+            try {
+                // 1. Check if Username is Unique
+                const usernameRef = doc(db, "usernames", username);
+                const usernameSnap = await getDoc(usernameRef);
+                
+                if (usernameSnap.exists()) {
+                    showAlert("Username Taken", "This username is already in use. Please choose another.");
+                    return;
+                }
+
+                showLoading("Creating Account...");
+                // 2. Create Auth User
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                const user = userCredential.user;
+
+                // 3. Upload Profile Picture to ImgBB (if selected)
+                let photoURL = "";
+                if (selectedPfpFile) {
+                    showLoading("Uploading Image...");
+                    const formData = new FormData();
+                    formData.append("image", selectedPfpFile);
+                    formData.append("key", IMGBB_API_KEY);
+
+                    try {
+                        const response = await fetch("https://api.imgbb.com/1/upload", {
+                            method: "POST",
+                            body: formData
+                        });
+                        const imgData = await response.json();
+                        if (imgData.success) {
+                            photoURL = imgData.data.url;
+                        } else {
+                            throw new Error("ImgBB upload failed.");
+                        }
+                    } catch (uploadError) {
+                        console.error("ImgBB Error:", uploadError);
+                        // We won't block registration if image fails, just leave it blank
+                    }
+                }
+
+                showLoading("Finalizing Setup...");
+                // 4. Save User Data to Firestore
+                await setDoc(doc(db, "users", user.uid), {
+                    uid: user.uid,
+                    username: username,
+                    displayName: displayName,
+                    email: email,
+                    photoURL: photoURL,
+                    createdAt: new Date().toISOString()
+                });
+
+                // 5. Claim the Username in the global list
+                await setDoc(usernameRef, { uid: user.uid });
+
+                // Update system logic
+                await setDoc(doc(db, "file", "userData"), { isLoggedIn: true }, { merge: true });
+                
+                window.location.replace('home.html');
+
+            } catch (error) {
+                showAlert("Registration Failed", error.message.replace("Firebase: ", ""));
+            }
+        };
+
+        window.handleGoogleLogin = async () => {
+            showLoading("Connecting to Google...");
+            try {
+                const result = await signInWithPopup(auth, googleProvider);
+                const user = result.user;
+                
+                const userRef = doc(db, "users", user.uid);
+                const userSnap = await getDoc(userRef);
+
+                if (!userSnap.exists()) {
+                    await setDoc(userRef, {
+                        uid: user.uid,
+                        username: "user_" + user.uid.substring(0, 6),
+                        displayName: user.displayName,
+                        email: user.email,
+                        photoURL: user.photoURL,
+                        createdAt: new Date().toISOString()
+                    });
+                }
+
+                await setDoc(doc(db, "file", "userData"), { isLoggedIn: true }, { merge: true });
+                window.location.replace('home.html');
+
+            } catch (error) {
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    showAlert("Google Login Failed", error.message.replace("Firebase: ", ""));
+                } else {
+                    hideLoading();
+                }
+            }
+        };
+
+        window.handleForgotPassword = async () => {
+            const email = document.getElementById('forgot-email').value;
+            showLoading("Sending Link...");
+            try {
+                await sendPasswordResetEmail(auth, email);
+                showAlert("Email Sent", "Check your inbox for a link to reset your password.", false);
+                document.getElementById('forgot-form').reset();
+            } catch (error) {
+                showAlert("Error", error.message.replace("Firebase: ", ""));
+            }
+        };
+    </script>
+</body>
+</html>
