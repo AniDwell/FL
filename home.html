@@ -31,7 +31,6 @@
 
     <style>
         body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
-        /* Hide scrollbar for a clean app feel */
         ::-webkit-scrollbar { display: none; }
     </style>
 </head>
@@ -45,7 +44,6 @@
         </div>
 
         <div class="flex items-center gap-4">
-            
             <button id="notify-btn" class="relative group outline-none">
                 <svg class="w-6 h-6 text-gray-800 dark:text-white transition-transform group-active:scale-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
                 <span id="notify-badge" class="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-sm opacity-0 transition-all duration-300 scale-50">0</span>
@@ -60,7 +58,6 @@
     <div id="notify-widget" class="fixed inset-0 z-[60] hidden pointer-events-none"></div>
 
     <main class="flex-1 w-full max-w-lg mx-auto pb-28 flex flex-col gap-4 pt-4 relative z-10">
-        
         <div id="stories-widget" class="w-full"></div>
         <div id="feed1-widget" class="w-full"></div>
         <div id="vidz-widget" class="w-full"></div>
@@ -69,15 +66,37 @@
         <div id="feed3-widget" class="w-full"></div>
         <div id="vidzbf-widget" class="w-full"></div>
         <div id="feed4-widget" class="w-full"></div>
-
     </main>
 
     <div id="bottom-nav-container"></div>
 
     <script type="module">
-        import { initBottomNav } from './bottom-nav.js';
+        // 1. Initialize Firebase so bottom-nav.js doesn't crash!
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyCANvRaHEUA7wkWMhC9_hFyrzU8cjoUo2U",
+            authDomain: "thuggish-2cd07.firebaseapp.com",
+            projectId: "thuggish-2cd07",
+            storageBucket: "thuggish-2cd07.firebasestorage.app",
+            messagingSenderId: "221865053567",
+            appId: "1:221865053567:web:ad8960c0136ac524269e4a"
+        };
+        const app = initializeApp(firebaseConfig);
 
-        // --- 1. LOAD HEADER WIDGETS (Notifications) ---
+        // 2. Load Bottom Nav Safely
+        async function loadBottomNav() {
+            try {
+                const navModule = await import('./bottom-nav.js');
+                if (navModule && navModule.initBottomNav) {
+                    navModule.initBottomNav('bottom-nav-container');
+                }
+            } catch (error) {
+                console.error("Bottom Nav loading error:", error);
+            }
+        }
+
+        // 3. Load Header Widgets (Notifications)
         async function loadHeaderWidgets() {
             try {
                 const notifyModule = await import('./notify.js');
@@ -89,7 +108,7 @@
             }
         }
 
-        // --- 2. LOAD FEED WIDGETS ---
+        // 4. Load Feed Widgets
         const widgetConfig = [
             { id: 'stories-widget', file: './stories.js', func: 'loadStories' },
             { id: 'feed1-widget', file: './feed1.js', func: 'loadFeed1' },
@@ -101,7 +120,6 @@
             { id: 'feed4-widget', file: './feed4.js', func: 'loadFeed4' }
         ];
 
-        // Clean, simple spinner placeholder (No text, no borders)
         const createPlaceholder = (id) => {
             const container = document.getElementById(id);
             container.innerHTML = `
@@ -119,7 +137,6 @@
                         module[widget.func](widget.id);
                     }
                 } catch (error) {
-                    // Show minimal spinner if file is missing
                     createPlaceholder(widget.id);
                 }
             }
@@ -127,9 +144,9 @@
 
         // --- INIT ALL ---
         window.addEventListener('DOMContentLoaded', () => {
+            loadBottomNav(); // Now safe because Firebase is initialized!
             loadHeaderWidgets();
             loadWidgets();
-            initBottomNav('bottom-nav-container'); // Inject the Bottom Navigation Menu
         });
     </script>
 </body>
