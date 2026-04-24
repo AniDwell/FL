@@ -1,6 +1,6 @@
 // stories.js
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, query, where, getDocs, limit, orderBy } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
 export async function loadStories(containerId) {
     const container = document.getElementById(containerId);
@@ -17,28 +17,16 @@ export async function loadStories(containerId) {
             return;
         }
 
-        // 1. Get User's PFP Safely
-        let myPfp = user.photoURL || pfpPlaceholder;
-        let userData = {};
-        
-        try {
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists()) {
-                userData = userDoc.data();
-                if (userData.photoURL) myPfp = userData.photoURL;
-            }
-        } catch (e) {
-            console.warn("Could not fetch user doc for PFP, using fallback.");
-        }
+        // 1. INSTANT RENDER: "Your Story" circle guaranteed to show immediately
+        // Hum auth object se direct photo use kar lenge taaki wait na karna pade
+        const fastPfp = user.photoURL || pfpPlaceholder;
 
-        // 2. ALWAYS RENDER "YOUR STORY" IMMEDIATELY
-        // Ye hissa kabhi gayab nahi hoga, chahe DB khali kyu na ho!
-        let html = `
+        container.innerHTML = `
             <style>
                 .hide-scrollbar::-webkit-scrollbar { display: none; }
                 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
             </style>
-            <div id="story-scroll-container" class="w-full flex gap-4 px-4 overflow-x-auto snap-x hide-scrollbar pt-2 pb-1">
+            <div class="w-full flex gap-4 px-4 overflow-x-auto snap-x hide-scrollbar pt-2 pb-1">
                 
                 <div class="flex flex-col items-center gap-1.5 min-w-[68px] cursor-pointer snap-start shrink-0" onclick="window.location.href='up.html'">
                     <div class="relative w-16 h-16 flex items-center justify-center active:scale-95 transition-transform">
@@ -47,7 +35,7 @@ export async function loadStories(containerId) {
                             <circle cx="50" cy="50" r="48" fill="none" class="stroke-electric dark:stroke-white" stroke-width="3" stroke-dasharray="18 12" stroke-linecap="round"></circle>
                         </svg>
 
-                        <img src="${myPfp}" class="w-[56px] h-[56px] rounded-full object-cover z-10 border-2 border-[#0a0a0a]">
+                        <img id="my-story-pfp" src="${fastPfp}" class="w-[56px] h-[56px] rounded-full object-cover z-10 border-2 border-[#0a0a0a]">
                         
                         <div class="absolute -bottom-1 -right-1 bg-electric text-white rounded-full w-6 h-6 flex items-center justify-center border-[2.5px] border-white dark:border-[#0a0a0a] shadow-sm z-20">
                             <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
@@ -55,71 +43,32 @@ export async function loadStories(containerId) {
                     </div>
                     <span class="text-[10px] font-bold opacity-50 truncate w-16 text-center">Your Story</span>
                 </div>
+
+                <div id="other-stories-list" class="flex gap-4 shrink-0"></div>
+
             </div>
         `;
-        
-        container.innerHTML = html; // Inject instantly!
 
-        // 3. TRY TO FETCH OTHER STORIES IN BACKGROUND
+        // 2. BACKGROUND FETCH: Get High-Res PFP & Other User's Stories
         try {
-            let activeStories = [];
-            const followingList = userData.following || [];
-            
-            // Backend Query Placeholder
-            // ... (Your real query will go here later) ...
-
-            // If we actually found stories, append them to the container
-            if (activeStories.length > 0) {
-                const scrollContainer = document.getElementById('story-scroll-container');
-                let otherStoriesHtml = "";
-
-                activeStories.forEach(story => {
-                    const ringClass = story.isViewed 
-                        ? "border-[1px] border-gray-400 dark:border-white/50" // Thin border
-                        : "border-[2.5px] border-black dark:border-white";    // Thick border
-
-                    otherStoriesHtml += `
-                        <div class="flex flex-col items-center gap-1.5 min-w-[68px] cursor-pointer snap-start shrink-0" onclick="triggerStoryPlayer('${story.id}')">
-                            <div class="w-16 h-16 rounded-full p-[2px] ${ringClass} active:scale-95 transition-transform">
-                                <img src="${story.pfp || pfpPlaceholder}" class="w-full h-full rounded-full object-cover border border-transparent dark:border-[#0a0a0a]">
-                            </div>
-                            <span class="text-[10px] font-bold ${story.isViewed ? 'opacity-60' : 'opacity-90'} truncate w-16 text-center">${story.username}</span>
-                        </div>
-                    `;
-                });
-
-                scrollContainer.insertAdjacentHTML('beforeend', otherStoriesHtml);
+            // Update to High-Res Database PFP (if different)
+            const userDoc = await getDoc(doc(db, "users", user.uid));
+            if (userDoc.exists() && userDoc.data().photoURL) {
+                document.getElementById('my-story-pfp').src = userDoc.data().photoURL;
             }
-        } catch (dbError) {
-            // Agar koi DB error aata hai, toh widget crash nahi hoga!
-            console.warn("Could not load other stories. Backend might be empty.", dbError);
-        }
-    });
 
-    window.triggerStoryPlayer = async (storyId) => {
-        try {
-            const playerModule = await import('./plyrstry.js');
-            if (playerModule && playerModule.playStory) {
-                playerModule.playStory(storyId);
-            }
-        } catch (e) {
-            console.warn(`plyrstry.js not found for story: ${storyId}`);
-        }
-    };
-}
-                   </div>
-                `;
-            });
-
-            html += `</div>`;
-            container.innerHTML = html;
+            // Backend Logic Placeholder for other stories (Currently Empty)
+            // const otherStoriesList = document.getElementById('other-stories-list');
+            // let html = '';
+            // activeStories.forEach(story => { ... add HTML to html string ... });
+            // otherStoriesList.innerHTML = html;
 
         } catch (error) {
-            console.error("Error loading stories widget:", error);
-            container.innerHTML = '';
+            console.warn("Backend fetch failed, but Your Story is still visible.", error);
         }
     });
 
+    // Dynamic Player Trigger (For other stories later)
     window.triggerStoryPlayer = async (storyId) => {
         try {
             const playerModule = await import('./plyrstry.js');
@@ -128,11 +77,6 @@ export async function loadStories(containerId) {
             }
         } catch (e) {
             console.warn(`plyrstry.js not found. Intended to open story: ${storyId}`);
-        }
-    };
-}
-tory: ${storyId}`);
-            alert(`Story clicked! Create plyrstry.js to play Story ID: ${storyId}`);
         }
     };
 }
