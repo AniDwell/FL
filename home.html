@@ -45,10 +45,11 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <a href="notify.html" class="relative group">
+            
+            <button id="notify-btn" class="relative group outline-none">
                 <svg class="w-6 h-6 text-gray-800 dark:text-white transition-transform group-active:scale-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
-                <span class="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white dark:border-black rounded-full"></span>
-            </a>
+                <span id="notify-badge" class="absolute -top-1.5 -right-1.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-bold text-white shadow-sm opacity-0 transition-all duration-300 scale-50">0</span>
+            </button>
             
             <a href="cht.html" class="relative group">
                 <svg class="w-6 h-6 text-gray-800 dark:text-white transition-transform group-active:scale-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path></svg>
@@ -56,7 +57,9 @@
         </div>
     </header>
 
-    <main class="flex-1 w-full max-w-lg mx-auto pb-20 flex flex-col gap-4 pt-4">
+    <div id="notify-widget" class="fixed inset-0 z-[60] hidden pointer-events-none"></div>
+
+    <main class="flex-1 w-full max-w-lg mx-auto pb-20 flex flex-col gap-4 pt-4 relative z-10">
         
         <div id="stories-widget" class="w-full"></div>
         <div id="feed1-widget" class="w-full"></div>
@@ -70,7 +73,20 @@
     </main>
 
     <script type="module">
-        // List of all widgets and their respective files
+        // --- 1. LOAD HEADER WIDGETS (Notifications) ---
+        async function loadHeaderWidgets() {
+            try {
+                const notifyModule = await import('./notify.js');
+                if (notifyModule && notifyModule.initNotify) {
+                    // We pass the IDs to the JS file so it can take over control
+                    notifyModule.initNotify('notify-btn', 'notify-badge', 'notify-widget');
+                }
+            } catch (error) {
+                console.warn("notify.js is not created yet. Notifications are inactive.");
+            }
+        }
+
+        // --- 2. LOAD FEED WIDGETS ---
         const widgetConfig = [
             { id: 'stories-widget', file: './stories.js', func: 'loadStories' },
             { id: 'feed1-widget', file: './feed1.js', func: 'loadFeed1' },
@@ -82,7 +98,6 @@
             { id: 'feed4-widget', file: './feed4.js', func: 'loadFeed4' }
         ];
 
-        // Function to create a placeholder skeleton if file is missing
         const createPlaceholder = (id, filename) => {
             const container = document.getElementById(id);
             container.innerHTML = `
@@ -93,26 +108,25 @@
             `;
         };
 
-        // Dynamically load all widgets
         async function loadWidgets() {
             for (const widget of widgetConfig) {
                 try {
-                    // Try to import the file dynamically
                     const module = await import(widget.file);
-                    // Execute its load function
                     if (module && module[widget.func]) {
                         module[widget.func](widget.id);
                     }
                 } catch (error) {
-                    // If file doesn't exist yet, show a placeholder box
                     console.warn(`Widget missing or error in ${widget.file}:`, error);
                     createPlaceholder(widget.id, widget.file);
                 }
             }
         }
 
-        // Initialize when DOM is ready
-        window.addEventListener('DOMContentLoaded', loadWidgets);
+        // --- INIT ALL ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadHeaderWidgets();
+            loadWidgets();
+        });
     </script>
 </body>
 </html>
