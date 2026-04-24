@@ -6,6 +6,9 @@
     <title>Complete Profile | Artist Hub</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     
     <script>
         tailwind.config = {
@@ -50,6 +53,10 @@
         }
         .custom-input:focus { border-color: #0052FF; }
         .dark .custom-input:focus { border-color: white; }
+
+        /* Cropper Customization to match dark theme */
+        .cropper-view-box, .cropper-face { border-radius: 50%; } /* Makes crop box circular */
+        .cropper-modal { background-color: rgba(0, 0, 0, 0.8); }
     </style>
 </head>
 <body class="bg-white text-gray-900 dark:bg-darkBg dark:text-gray-100 min-h-screen w-screen flex flex-col items-center justify-center transition-colors duration-300 relative px-6">
@@ -78,7 +85,7 @@
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M12 4v16m8-8H4"></path></svg>
                     </div>
                 </div>
-                <input type="file" id="pfp-upload" accept="image/*" class="hidden" onchange="previewPFP(event)">
+                <input type="file" id="pfp-upload" accept="image/*" class="hidden" onchange="openCropper(event)">
 
                 <div class="w-full space-y-4">
                     <div>
@@ -97,10 +104,19 @@
         </div>
     </div>
 
-    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[80] transition-opacity duration-300 opacity-0">
+    <div id="cropper-modal" class="fixed inset-0 bg-black z-[90] hidden flex-col transition-opacity duration-300 opacity-0">
+        <div class="flex-1 w-full h-full flex items-center justify-center p-4">
+            <img id="cropper-image" class="max-w-full max-h-full block">
+        </div>
+        <div class="h-24 bg-[#0a0a0a] border-t border-white/10 flex items-center justify-between px-6 pb-4">
+            <button onclick="cancelCrop()" class="text-white text-sm font-bold opacity-60 hover:opacity-100 transition-opacity">Cancel</button>
+            <button onclick="applyCrop()" class="bg-white text-black px-8 py-3 rounded-xl text-sm font-bold active:scale-95 transition-transform shadow-lg shadow-white/10">Done</button>
+        </div>
+    </div>
+
+    <div id="alert-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-[100] transition-opacity duration-300 opacity-0">
         <div id="alert-card" class="bg-white dark:bg-darkSurface p-6 rounded-[20px] max-w-[280px] w-full mx-4 border border-gray-100 dark:border-white/10 transform scale-95 transition-transform duration-300 flex flex-col items-center text-center shadow-sm dark:shadow-none">
-            <div id="alert-icon-container" class="w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                </div>
+            <div id="alert-icon-container" class="w-12 h-12 rounded-full flex items-center justify-center mb-4"></div>
             <h3 id="alert-title" class="text-lg font-bold mb-1 tracking-tight text-gray-900 dark:text-white">Alert</h3>
             <p id="alert-message" class="text-xs text-gray-500 dark:text-gray-400 mb-6">Message goes here.</p>
             <button onclick="closeAlert()" class="w-full bg-gray-900 dark:bg-white hover:opacity-90 text-white dark:text-black text-sm font-bold py-3 px-4 rounded-xl transition-all">Okay</button>
@@ -128,25 +144,82 @@
         const IMGBB_API_KEY = "4a683051e76ed12880a42aefa6ed427b";
         
         let currentUser = null;
-        let selectedPfpFile = null;
-        let originalUsername = ""; // To track if they changed their username
+        let selectedPfpFile = null; // Will now hold the Cropped File
+        let originalUsername = "";
         let currentPhotoURL = "";
+        
+        let cropperInstance = null;
 
-        // --- UI HELPERS ---
+        // --- CROPPER LOGIC ---
 
-        window.previewPFP = (event) => {
+        window.openCropper = (event) => {
             const file = event.target.files[0];
             if (file) {
-                selectedPfpFile = file;
                 const reader = new FileReader();
                 reader.onload = (e) => {
-                    const previewDiv = document.getElementById('pfp-preview');
-                    previewDiv.style.backgroundImage = `url(${e.target.result})`;
-                    document.getElementById('pfp-icon').style.display = 'none';
+                    const cropperImg = document.getElementById('cropper-image');
+                    cropperImg.src = e.target.result;
+                    
+                    // Show Fullscreen Modal
+                    const modal = document.getElementById('cropper-modal');
+                    modal.classList.remove('hidden'); modal.classList.add('flex');
+                    requestAnimationFrame(() => {
+                        modal.classList.remove('opacity-0'); modal.classList.add('opacity-100');
+                    });
+
+                    // Initialize Cropper.js
+                    if (cropperInstance) cropperInstance.destroy();
+                    cropperInstance = new Cropper(cropperImg, {
+                        aspectRatio: 1, // Force 1:1 square
+                        viewMode: 1,
+                        dragMode: 'move',
+                        autoCropArea: 0.9,
+                        background: false,
+                        guides: false,
+                        center: false,
+                        highlight: false,
+                        cropBoxMovable: false,
+                        cropBoxResizable: false,
+                        toggleDragModeOnDblclick: false,
+                    });
                 };
                 reader.readAsDataURL(file);
             }
+            // Reset input so selecting the same file works again
+            event.target.value = '';
         };
+
+        window.cancelCrop = () => {
+            if (cropperInstance) cropperInstance.destroy();
+            const modal = document.getElementById('cropper-modal');
+            modal.classList.remove('opacity-100'); modal.classList.add('opacity-0');
+            setTimeout(() => { modal.classList.remove('flex'); modal.classList.add('hidden'); }, 300);
+        };
+
+        window.applyCrop = () => {
+            if (!cropperInstance) return;
+            
+            // Extract the cropped area as a canvas
+            cropperInstance.getCroppedCanvas({
+                width: 500, // Export resolution
+                height: 500,
+                fillColor: '#000' // Background color if image is transparent
+            }).toBlob((blob) => {
+                // 1. Save it to our variable for ImgBB upload
+                selectedPfpFile = new File([blob], "profile_pic.jpg", { type: "image/jpeg" });
+                
+                // 2. Update the UI Preview
+                const previewUrl = URL.createObjectURL(blob);
+                document.getElementById('pfp-preview').style.backgroundImage = `url(${previewUrl})`;
+                document.getElementById('pfp-icon').style.display = 'none';
+                
+                // 3. Close the modal
+                cancelCrop();
+            }, 'image/jpeg', 0.85); // 85% JPEG quality
+        };
+
+
+        // --- UI HELPERS ---
 
         const showLoading = (text) => {
             document.getElementById('loading-text').innerText = text;
@@ -196,25 +269,20 @@
 
         // --- AUTH STATE & DATA FETCHING ---
 
-        // Listen for Auth State to load user data automatically
         onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 try {
-                    // Fetch existing data from Firestore
                     const userDocRef = doc(db, "users", user.uid);
                     const userDoc = await getDoc(userDocRef);
 
                     if (userDoc.exists()) {
                         const data = userDoc.data();
-                        
-                        // Populate Fields
                         document.getElementById('edit-username').value = data.username || "";
                         document.getElementById('edit-displayname').value = data.displayName || "";
                         originalUsername = data.username || "";
                         currentPhotoURL = data.photoURL || "";
 
-                        // If they have a PFP (like from Google), display it
                         if (currentPhotoURL) {
                             document.getElementById('pfp-preview').style.backgroundImage = `url(${currentPhotoURL})`;
                             document.getElementById('pfp-icon').style.display = 'none';
@@ -226,7 +294,6 @@
                     showAlert("System Error", "Failed to load profile data.");
                 }
             } else {
-                // If not logged in, kick them back to login page
                 window.location.replace('login.html');
             }
         });
@@ -242,7 +309,6 @@
             showLoading("Saving Profile...");
 
             try {
-                // 1. Check Username Uniqueness (Only if they changed it)
                 if (newUsername !== originalUsername) {
                     const usernameRef = doc(db, "usernames", newUsername);
                     const usernameSnap = await getDoc(usernameRef);
@@ -253,12 +319,11 @@
                     }
                 }
 
-                // 2. Handle Image Upload via ImgBB (Only if a new file was selected)
                 let finalPhotoURL = currentPhotoURL;
                 if (selectedPfpFile) {
                     showLoading("Uploading Image...");
                     const formData = new FormData();
-                    formData.append("image", selectedPfpFile);
+                    formData.append("image", selectedPfpFile); // selectedPfpFile is now the cropped blob!
                     formData.append("key", IMGBB_API_KEY);
 
                     const response = await fetch("https://api.imgbb.com/1/upload", {
@@ -276,7 +341,6 @@
 
                 showLoading("Finalizing Setup...");
 
-                // 3. Update User Document in Firestore
                 const userDocRef = doc(db, "users", currentUser.uid);
                 await setDoc(userDocRef, {
                     username: newUsername,
@@ -285,21 +349,14 @@
                     profileCompleted: true
                 }, { merge: true });
 
-                // 4. Handle Username Document Swapping
                 if (newUsername !== originalUsername) {
-                    // Claim new username
                     await setDoc(doc(db, "usernames", newUsername), { uid: currentUser.uid });
-                    
-                    // Release old username (if they had one)
                     if (originalUsername) {
                         await deleteDoc(doc(db, "usernames", originalUsername));
                     }
                 }
 
-                // 5. Ensure System DB knows they are logged in
                 await setDoc(doc(db, "file", "userData"), { isLoggedIn: true }, { merge: true });
-
-                // 6. Redirect to Home
                 window.location.replace('home.html');
 
             } catch (error) {
