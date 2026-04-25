@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Create | Artist Hub</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { electric: '#0052FF', darkBg: '#000000', darkSurface: '#0a0a0a' }
+                }
+            }
+        }
+    </script>
+    <script>document.documentElement.classList.add('dark'); // Always dark for editor</script>
+
+    <style>
+        body { overflow: hidden; touch-action: none; background: #000; }
+        ::-webkit-scrollbar { display: none; }
+        
+        /* The Media Layer */
+        #media-layer {
+            transition: filter 0.1s;
+            transform-origin: center center;
+        }
+
+        /* Custom Slider Range */
+        input[type=range] {
+            -webkit-appearance: none; width: 100%; background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 16px; width: 16px; border-radius: 50%;
+            background: #ffffff; cursor: pointer; margin-top: -6px; box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer; background: rgba(255,255,255,0.3); border-radius: 2px;
+        }
+
+        /* Draggable Elements */
+        .draggable { position: absolute; pointer-events: auto; text-shadow: 0 2px 10px rgba(0,0,0,0.8); }
+    </style>
+</head>
+<body class="text-white w-screen h-screen flex flex-col relative font-sans">
+
+    <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-center z-50 bg-gradient-to-b from-black/60 to-transparent pointer-events-auto">
+        <button onclick="window.history.back()" class="w-10 h-10 flex items-center justify-center bg-black/40 backdrop-blur-md rounded-full active:scale-90 transition-transform">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
+        
+        <div id="upload-category" class="bg-black/40 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-bold tracking-wider uppercase border border-white/10">
+            Post
+        </div>
+    </div>
+
+    <div class="absolute top-24 right-4 flex flex-col gap-5 z-50 pointer-events-auto">
+        <button onclick="addTextOverlay()" class="flex flex-col items-center gap-1 active:scale-90 transition-transform drop-shadow-lg">
+            <div class="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10"><span class="font-serif font-bold text-lg">Aa</span></div>
+        </button>
+        <button onclick="alert('Stickers & Mentions UI will open here')" class="flex flex-col items-center gap-1 active:scale-90 transition-transform drop-shadow-lg">
+            <div class="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </div>
+        </button>
+        <button onclick="toggleAdjustments()" class="flex flex-col items-center gap-1 active:scale-90 transition-transform drop-shadow-lg">
+            <div class="w-10 h-10 bg-black/40 backdrop-blur-md rounded-full flex items-center justify-center border border-white/10">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"></path></svg>
+            </div>
+        </button>
+    </div>
+
+    <div id="editor-canvas" class="w-full h-full bg-[#111] relative overflow-hidden flex items-center justify-center" onclick="document.getElementById('file-picker').click()">
+        
+        <div id="media-placeholder" class="text-white/30 flex flex-col items-center">
+            <svg class="w-16 h-16 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            <p class="font-bold tracking-widest uppercase text-xs">Tap to Select Media</p>
+        </div>
+        
+        <img id="media-layer" class="absolute inset-0 w-full h-full object-cover hidden">
+        <video id="video-layer" class="absolute inset-0 w-full h-full object-cover hidden" loop muted playsinline></video>
+        
+        <div id="overlay-container" class="absolute inset-0 pointer-events-none"></div>
+
+    </div>
+    
+    <input type="file" id="file-picker" accept="image/*,video/*" class="hidden" onchange="loadMedia(event)">
+
+    <div id="adjustments-panel" class="absolute bottom-28 left-4 right-4 bg-black/80 backdrop-blur-xl border border-white/10 p-5 rounded-3xl hidden flex-col gap-4 z-40 transform translate-y-4 transition-all opacity-0">
+        <div>
+            <div class="flex justify-between text-[10px] uppercase font-bold tracking-wider opacity-50 mb-2"><span>Brightness</span><span id="val-bright">100%</span></div>
+            <input type="range" id="slider-bright" min="50" max="150" value="100" oninput="updateFilters()">
+        </div>
+        <div>
+            <div class="flex justify-between text-[10px] uppercase font-bold tracking-wider opacity-50 mb-2"><span>Saturation</span><span id="val-sat">100%</span></div>
+            <input type="range" id="slider-sat" min="0" max="200" value="100" oninput="updateFilters()">
+        </div>
+        <div>
+            <div class="flex justify-between text-[10px] uppercase font-bold tracking-wider opacity-50 mb-2"><span>Zoom</span><span id="val-zoom">1.0x</span></div>
+            <input type="range" id="slider-zoom" min="1" max="2" step="0.05" value="1" oninput="updateFilters()">
+        </div>
+    </div>
+
+    <div class="absolute bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex items-center justify-end px-6 pb-4 z-50 pointer-events-auto">
+        <button onclick="processAndUpload()" id="upload-btn" class="bg-white text-black px-6 py-3.5 rounded-full text-sm font-bold flex items-center gap-2 active:scale-95 transition-transform hidden shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+            Upload to <span id="btn-category">Post</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
+        </button>
+    </div>
+
+    <div id="upload-loader" class="fixed inset-0 bg-black/90 z-[100] hidden flex-col items-center justify-center">
+        <div class="w-12 h-12 border-[4px] border-white/20 border-t-electric rounded-full animate-spin mb-4"></div>
+        <p class="text-xs font-bold tracking-widest uppercase opacity-70">Sending to HF Server...</p>
+        <p class="text-[9px] opacity-40 mt-2">Connecting to @Strmvhiip_bot</p>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
+        // Firebase Setup
+        const firebaseConfig = {
+            apiKey: "AIzaSyCANvRaHEUA7wkWMhC9_hFyrzU8cjoUo2U",
+            authDomain: "thuggish-2cd07.firebaseapp.com",
+            projectId: "thuggish-2cd07"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // State Variables
+        let currentUser = null;
+        let selectedFile = null;
+        let isVideo = false;
+        let uploadCategory = 'post'; 
+        
+        // HF & Telegram API Keys Provided
+        const BOT_ID = "38156588";
+        const API_HASH = "54b5cf21302adf2b320d1250d9f85637";
+
+        // Check if came from stories.js
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('type') === 'story') {
+            uploadCategory = 'story';
+            document.getElementById('upload-category').innerText = 'Story';
+            document.getElementById('btn-category').innerText = 'Story';
+        }
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) currentUser = user;
+            else window.location.replace('login.html');
+        });
+
+        // --- MEDIA HANDLING ---
+        window.loadMedia = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            selectedFile = file;
+            isVideo = file.type.startsWith('video');
+            
+            document.getElementById('media-placeholder').style.display = 'none';
+            document.getElementById('upload-btn').classList.remove('hidden');
+
+            const mediaUrl = URL.createObjectURL(file);
+            const imgLayer = document.getElementById('media-layer');
+            const vidLayer = document.getElementById('video-layer');
+
+            if (isVideo) {
+                imgLayer.style.display = 'none';
+                vidLayer.style.display = 'block';
+                vidLayer.src = mediaUrl;
+                vidLayer.play();
+            } else {
+                vidLayer.style.display = 'none';
+                imgLayer.style.display = 'block';
+                imgLayer.src = mediaUrl;
+            }
+        };
+
+        // --- FILTER & ZOOM LOGIC ---
+        window.toggleAdjustments = () => {
+            const panel = document.getElementById('adjustments-panel');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                setTimeout(() => {
+                    panel.classList.remove('translate-y-4', 'opacity-0');
+                }, 10);
+            } else {
+                panel.classList.add('translate-y-4', 'opacity-0');
+                setTimeout(() => { panel.classList.add('hidden'); }, 300);
+            }
+        };
+
+        window.updateFilters = () => {
+            const bright = document.getElementById('slider-bright').value;
+            const sat = document.getElementById('slider-sat').value;
+            const zoom = document.getElementById('slider-zoom').value;
+
+            document.getElementById('val-bright').innerText = bright + '%';
+            document.getElementById('val-sat').innerText = sat + '%';
+            document.getElementById('val-zoom').innerText = zoom + 'x';
+
+            const activeLayer = isVideo ? document.getElementById('video-layer') : document.getElementById('media-layer');
+            
+            activeLayer.style.filter = `brightness(${bright}%) saturate(${sat}%)`;
+            activeLayer.style.transform = `scale(${zoom})`;
+        };
+
+        // --- TEXT OVERLAY LOGIC (Simple draggable) ---
+        window.addTextOverlay = () => {
+            const text = prompt("Enter your text:");
+            if (!text) return;
+
+            const overlayCon = document.getElementById('overlay-container');
+            const div = document.createElement('div');
+            div.className = "draggable text-3xl font-bold text-white px-4 py-2";
+            div.style.top = "50%";
+            div.style.left = "50%";
+            div.style.transform = "translate(-50%, -50%)";
+            div.innerText = text;
+
+            // Simple Drag Logic (Touch friendly for mobile)
+            let isDragging = false;
+            div.addEventListener('touchstart', () => isDragging = true);
+            div.addEventListener('touchend', () => isDragging = false);
+            div.addEventListener('touchmove', (e) => {
+                if (isDragging) {
+                    const touch = e.touches[0];
+                    div.style.left = touch.clientX + 'px';
+                    div.style.top = touch.clientY + 'px';
+                }
+            });
+
+            overlayCon.appendChild(div);
+        };
+
+        // --- HF SPACE / TELEGRAM UPLOAD LOGIC ---
+        window.processAndUpload = async () => {
+            if (!selectedFile || !currentUser) return;
+
+            // 1. Gather all edit metadata
+            const editData = {
+                brightness: document.getElementById('slider-bright').value,
+                saturation: document.getElementById('slider-sat').value,
+                zoom: document.getElementById('slider-zoom').value,
+                hasText: document.getElementById('overlay-container').innerHTML !== ''
+            };
+
+            // Show Loading
+            document.getElementById('upload-loader').classList.remove('hidden');
+            document.getElementById('upload-loader').classList.add('flex');
+
+            try {
+                // ==========================================
+                // 🚀 UPLOAD TO YOUR HUGGING FACE / TELEGRAM BOT
+                // ==========================================
+                // This is the structure you requested. Since I don't have the exact API endpoint of the HF space, 
+                // I will simulate the network delay and return the formatted URL you provided.
+                // In production, you will replace the setTimeout with:
+                // const formData = new FormData(); formData.append('file', selectedFile);
+                // const response = await fetch('https://anidwell-footprints.hf.space/upload', { method: 'POST', body: formData });
+                
+                await new Promise(resolve => setTimeout(resolve, 3000)); // Simulating upload time
+                
+                // The URL structure you provided:
+                const returnedStreamUrl = `https://anidwell-footprints.hf.space/stream/${BOT_ID}?hash=${API_HASH}`;
+
+                // ==========================================
+                // 🗄️ SAVE TO FIREBASE 
+                // ==========================================
+                const targetCollection = uploadCategory === 'story' ? 'stories' : 'posts';
+                const newDocRef = doc(collection(db, targetCollection));
+                
+                await setDoc(newDocRef, {
+                    authorUid: currentUser.uid,
+                    mediaUrl: returnedStreamUrl, // The HF streaming URL!
+                    mediaType: isVideo ? 'video' : 'image',
+                    edits: editData, // Save edits so plyrstry.js knows how to apply CSS filters
+                    timestamp: serverTimestamp(),
+                    isViewed: false // For stories
+                });
+
+                // Done! Redirect back.
+                window.location.replace('home.html');
+
+            } catch (error) {
+                console.error("Upload Error:", error);
+                alert("Upload failed. Check your network.");
+                document.getElementById('upload-loader').classList.add('hidden');
+            }
+        };
+    </script>
+</body>
+</html>
