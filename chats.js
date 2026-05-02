@@ -1,6 +1,6 @@
 // chats.js
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
-import { getFirestore, collection, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, getDocs, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
 export async function loadChatList(containerId) {
     const container = document.getElementById(containerId);
@@ -60,6 +60,14 @@ export async function loadChatList(containerId) {
     let currentCategory = 'all'; // Default
     let currentSearchQuery = '';
     let selectedChatId = null;
+    let currentUserId = null;
+
+    // Helper function to format timestamp
+    const formatTime = (timestamp) => {
+        if (!timestamp) return '';
+        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    };
 
     // --- 2. RENDER LOGIC ---
     const renderChats = () => {
@@ -73,17 +81,18 @@ export async function loadChatList(containerId) {
             
             // Search Filter Logic
             if (currentSearchQuery) {
-                return chat.name.toLowerCase().includes(currentSearchQuery) || 
-                       chat.lastMessage.toLowerCase().includes(currentSearchQuery);
+                const nameMatch = chat.name ? chat.name.toLowerCase().includes(currentSearchQuery) : false;
+                const msgMatch = chat.lastMessage ? chat.lastMessage.toLowerCase().includes(currentSearchQuery) : false;
+                return nameMatch || msgMatch;
             }
             return true;
         });
 
-        // Sort by pinned first, then time
+        // Sort by pinned first
         filtered.sort((a, b) => {
             if (a.isPinned && !b.isPinned) return -1;
             if (!a.isPinned && b.isPinned) return 1;
-            return 0; // In real app, compare timestamps here
+            return 0; 
         });
 
         if (filtered.length === 0) {
@@ -99,27 +108,29 @@ export async function loadChatList(containerId) {
         let html = '<div class="flex flex-col px-2 pb-10">';
         
         filtered.forEach(chat => {
-            const pinIcon = chat.isPinned ? `<svg class="w-3.h h-3.5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>` : '';
+            const pinIcon = chat.isPinned ? `<svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path d="M5 4a2 2 0 012-2h6a2 2 0 012 2v14l-5-2.5L5 18V4z"></path></svg>` : '';
             const muteIcon = chat.isMuted ? `<svg class="w-3.5 h-3.5 text-gray-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>` : '';
             const unreadBadge = chat.unread > 0 ? `<div class="bg-electric text-white text-[10px] font-bold h-5 min-w-[20px] rounded-full flex items-center justify-center px-1.5 shadow-sm">${chat.unread}</div>` : '';
             
             const msgClass = chat.unread > 0 ? "font-bold text-gray-900 dark:text-white" : "font-medium opacity-60";
+            const displayTime = formatTime(chat.timestamp);
 
+            // Redirects to vchat.html
             html += `
-                <div class="flex items-center gap-3 p-2 rounded-2xl hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer transition-colors group relative" onclick="window.location.href='chatview.html?id=${chat.id}'">
+                <div class="flex items-center gap-3 p-2 rounded-2xl hover:bg-gray-100 dark:hover:bg-white/5 cursor-pointer transition-colors group relative" onclick="window.location.href='vchat.html?id=${chat.id}'">
                     
                     <div class="relative shrink-0">
-                        <img src="${chat.pfp}" class="w-14 h-14 rounded-full object-cover border border-gray-200 dark:border-white/10">
+                        <img src="${chat.pfp || pfpPlaceholder}" class="w-14 h-14 rounded-full object-cover border border-gray-200 dark:border-white/10">
                         ${chat.isOnline ? `<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-green-500 border-2 border-white dark:border-[#0a0a0a] rounded-full"></div>` : ''}
                     </div>
 
                     <div class="flex-1 min-w-0 flex flex-col justify-center">
                         <div class="flex justify-between items-baseline mb-0.5">
-                            <h3 class="text-sm font-bold truncate pr-2">${chat.name}</h3>
-                            <span class="text-[10px] font-bold opacity-40 shrink-0">${chat.time}</span>
+                            <h3 class="text-sm font-bold truncate pr-2">${chat.name || 'Unknown'}</h3>
+                            <span class="text-[10px] font-bold opacity-40 shrink-0">${displayTime}</span>
                         </div>
                         <div class="flex justify-between items-center gap-2">
-                            <p class="text-xs truncate flex-1 ${msgClass}">${chat.lastMessage}</p>
+                            <p class="text-xs truncate flex-1 ${msgClass}">${chat.lastMessage || '...'}</p>
                             <div class="flex items-center gap-1.5 shrink-0">
                                 ${muteIcon}
                                 ${pinIcon}
@@ -150,14 +161,15 @@ export async function loadChatList(containerId) {
         renderChats();
     });
 
-    // --- 4. GLOBAL API FOR ACTIONS ---
+    // --- 4. GLOBAL API FOR ACTIONS (Linked to Database) ---
     window.chatAPI = {
         openOptions: (chatId) => {
             selectedChatId = chatId;
             const chat = allChats.find(c => c.id === chatId);
-            
-            document.getElementById('opt-chat-pfp').src = chat.pfp;
-            document.getElementById('opt-chat-name').innerText = chat.name;
+            if(!chat) return;
+
+            document.getElementById('opt-chat-pfp').src = chat.pfp || pfpPlaceholder;
+            document.getElementById('opt-chat-name').innerText = chat.name || 'Unknown';
             document.getElementById('opt-text-pin').innerText = chat.isPinned ? "Unpin Chat" : "Pin Chat";
             document.getElementById('opt-text-archive').innerText = chat.isArchived ? "Unarchive" : "Archive";
 
@@ -172,9 +184,7 @@ export async function loadChatList(containerId) {
         },
         
         closeOptions: (e) => {
-            // Prevent closing if clicked inside the card
             if (e && e.target.id !== 'chat-options-modal') return;
-            
             const modal = document.getElementById('chat-options-modal');
             const card = document.getElementById('chat-options-card');
             
@@ -184,66 +194,85 @@ export async function loadChatList(containerId) {
         },
 
         action: async (type) => {
-            if (!selectedChatId) return;
+            if (!selectedChatId || !currentUserId) return;
             const chatIndex = allChats.findIndex(c => c.id === selectedChatId);
             if (chatIndex === -1) return;
 
-            if (type === 'pin') {
-                allChats[chatIndex].isPinned = !allChats[chatIndex].isPinned;
-            } 
-            else if (type === 'archive') {
-                allChats[chatIndex].isArchived = !allChats[chatIndex].isArchived;
-            } 
-            else if (type === 'mute') {
-                window.chatAPI.closeOptions();
-                // 🚀 DYNAMIC MUTE.JS LOADER
-                try {
-                    const muteModule = await import('./mute.js');
-                    if (muteModule && muteModule.initMute) {
-                        muteModule.initMute(selectedChatId);
-                    }
-                } catch (err) {
-                    alert("Muting logic loaded: mute.js required for UI overlay.");
-                }
-                return;
-            }
-            else if (type === 'delete') {
-                if(confirm(`Are you sure you want to delete chat with ${allChats[chatIndex].name}?`)) {
-                    allChats.splice(chatIndex, 1); // Remove from array
-                }
-            }
-            else if (type === 'block') {
-                if(confirm(`Block ${allChats[chatIndex].name}? You will not receive messages.`)) {
-                    allChats.splice(chatIndex, 1);
-                }
-            }
+            const chatRef = doc(db, "users", currentUserId, "chats", selectedChatId);
 
-            renderChats(); // Update UI
-            window.chatAPI.closeOptions(); // Close Modal
+            try {
+                if (type === 'pin') {
+                    const newState = !allChats[chatIndex].isPinned;
+                    await updateDoc(chatRef, { isPinned: newState });
+                    allChats[chatIndex].isPinned = newState;
+                } 
+                else if (type === 'archive') {
+                    const newState = !allChats[chatIndex].isArchived;
+                    await updateDoc(chatRef, { isArchived: newState });
+                    allChats[chatIndex].isArchived = newState;
+                } 
+                else if (type === 'mute') {
+                    window.chatAPI.closeOptions();
+                    try {
+                        const muteModule = await import('./mute.js');
+                        if (muteModule && muteModule.initMute) {
+                            muteModule.initMute(selectedChatId);
+                        }
+                    } catch (err) {
+                        alert("Mute logic requires mute.js to show the options overlay.");
+                    }
+                    return;
+                }
+                else if (type === 'delete') {
+                    if(confirm(`Are you sure you want to delete chat with ${allChats[chatIndex].name}?`)) {
+                        await deleteDoc(chatRef);
+                        allChats.splice(chatIndex, 1);
+                    }
+                }
+                else if (type === 'block') {
+                    if(confirm(`Block ${allChats[chatIndex].name}? You will not receive messages.`)) {
+                        // Normally you'd add this to a blockedUsers array in the user's main doc
+                        // Here we just delete the chat for UI representation
+                        await deleteDoc(chatRef);
+                        allChats.splice(chatIndex, 1);
+                    }
+                }
+
+                renderChats();
+                window.chatAPI.closeOptions();
+
+            } catch (error) {
+                console.error("Action failed:", error);
+                alert("Failed to update database. Check your connection.");
+            }
         }
     };
 
-    // --- 5. INITIAL DATA FETCH ---
+    // --- 5. INITIAL DATA FETCH (REAL FIREBASE DATA) ---
     onAuthStateChanged(auth, async (user) => {
         if (!user) { container.innerHTML = ''; return; }
+        currentUserId = user.uid;
 
         try {
-            // In a real scenario: Fetch from db "chats" collection where user is a participant.
-            // For now, setting up Mock Data that represents real Firestore structure.
-            
-            allChats = [
-                { id: 'c1', name: 'Zoro', pfp: 'https://i.pravatar.cc/150?u=1', lastMessage: 'Bhai rasta bhatak gaya', time: '10:42 AM', unread: 2, isOnline: true, isPinned: true, isArchived: false, isMuted: false, type: 'user' },
-                { id: 'c2', name: 'Dev Team Alpha', pfp: 'https://i.pravatar.cc/150?u=grp', lastMessage: 'Build failed on vercel.', time: '09:15 AM', unread: 5, isOnline: false, isPinned: false, isArchived: false, isMuted: true, type: 'group' },
-                { id: 'c3', name: 'Artist Hub Updates', pfp: 'logo.png', lastMessage: 'Version 2.0 is live!', time: 'Yesterday', unread: 0, isOnline: true, isPinned: false, isArchived: false, isMuted: false, type: 'channel' },
-                { id: 'c4', name: 'Naruto', pfp: 'https://i.pravatar.cc/150?u=2', lastMessage: 'Ramen khane chalega?', time: 'Tuesday', unread: 0, isOnline: false, isPinned: false, isArchived: true, isMuted: false, type: 'user' },
-                { id: 'c5', name: 'Goku', pfp: 'https://i.pravatar.cc/150?u=3', lastMessage: 'Sent an attachment', time: 'Mon', unread: 1, isOnline: true, isPinned: false, isArchived: false, isMuted: false, type: 'user' }
-            ];
+            // Fetch from real sub-collection "users/{uid}/chats"
+            const chatsRef = collection(db, "users", user.uid, "chats");
+            const q = query(chatsRef, orderBy("timestamp", "desc"));
+            const snapshot = await getDocs(q);
+
+            allChats = snapshot.docs.map(docSnap => ({
+                id: docSnap.id, // This is the unique Chat ID
+                ...docSnap.data()
+            }));
 
             renderChats();
 
         } catch (err) {
-            console.error("Error loading chats:", err);
-            container.innerHTML = '<p class="text-center text-xs opacity-50 p-4">Error loading messages.</p>';
+            console.warn("No chats found or error fetching real data. Make sure the sub-collection exists.", err);
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-20 opacity-40">
+                    <p class="text-xs font-bold tracking-widest uppercase">Start a new chat!</p>
+                </div>
+            `;
         }
     });
 }
