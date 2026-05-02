@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Chats | Artist Hub</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        electric: '#0052FF',
+                        darkBg: '#000000',
+                        darkSurface: '#0a0a0a'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <script>
+        const theme = localStorage.getItem('theme_preference') || 'system';
+        if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+
+    <style>
+        body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+        /* Hide scrollbar for a clean app feel */
+        ::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 dark:bg-darkBg dark:text-gray-100 min-h-screen w-screen flex flex-col transition-colors duration-300">
+
+    <header class="sticky top-0 z-50 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-gray-200 dark:border-white/10 px-4 py-3 flex justify-between items-center">
+        
+        <div class="flex items-center gap-3">
+            <button onclick="window.history.back()" class="active:scale-90 transition-transform">
+                <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <h1 class="text-xl font-extrabold tracking-tight">Messages</h1>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button onclick="alert('Open new chat modal')" class="active:scale-90 transition-transform">
+                <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 w-full max-w-lg mx-auto pb-28 flex flex-col pt-2 relative z-10">
+        
+        <div id="srchcht-widget" class="w-full px-4 mb-4"></div>
+        
+        <div id="thoughts-widget" class="w-full mb-2"></div>
+        
+        <div id="category-widget" class="w-full px-4 mb-2"></div>
+        
+        <div id="chats-widget" class="w-full flex-1 overflow-y-auto"></div>
+
+    </main>
+
+    <div id="bottom-nav-container"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+        
+        // 1. Initialize Firebase (Crucial for bottom-nav to fetch PFP without crashing)
+        const firebaseConfig = {
+            apiKey: "AIzaSyCANvRaHEUA7wkWMhC9_hFyrzU8cjoUo2U",
+            authDomain: "thuggish-2cd07.firebaseapp.com",
+            projectId: "thuggish-2cd07",
+            storageBucket: "thuggish-2cd07.firebasestorage.app",
+            messagingSenderId: "221865053567",
+            appId: "1:221865053567:web:ad8960c0136ac524269e4a"
+        };
+        const app = initializeApp(firebaseConfig);
+
+        // 2. Load Bottom Nav Safely
+        async function loadBottomNav() {
+            try {
+                const navModule = await import('./bottom-nav.js');
+                if (navModule && navModule.initBottomNav) {
+                    navModule.initBottomNav('bottom-nav-container');
+                }
+            } catch (error) {
+                console.warn("Bottom Nav loading skipped or failed on cht.html.");
+            }
+        }
+
+        // 3. Load Chat Page Widgets
+        const widgetConfig = [
+            { id: 'srchcht-widget', file: './srchcht.js', func: 'loadSearchChat' },
+            { id: 'thoughts-widget', file: './thoughts.js', func: 'loadThoughts' },
+            { id: 'category-widget', file: './category.js', func: 'loadCategories' },
+            { id: 'chats-widget', file: './chats.js', func: 'loadChatList' }
+        ];
+
+        const createPlaceholder = (id) => {
+            const container = document.getElementById(id);
+            container.innerHTML = `
+                <div class="w-full py-6 flex items-center justify-center opacity-30">
+                    <div class="w-5 h-5 border-2 border-gray-300 dark:border-gray-700 border-t-electric dark:border-t-white rounded-full animate-spin"></div>
+                </div>
+            `;
+        };
+
+        async function loadWidgets() {
+            for (const widget of widgetConfig) {
+                try {
+                    const module = await import(widget.file);
+                    if (module && module[widget.func]) {
+                        module[widget.func](widget.id);
+                    }
+                } catch (error) {
+                    createPlaceholder(widget.id); // Show spinner if JS file isn't created yet
+                }
+            }
+        }
+
+        // --- INIT ALL ---
+        window.addEventListener('DOMContentLoaded', () => {
+            loadBottomNav();
+            loadWidgets();
+        });
+    </script>
+</body>
+</html>
