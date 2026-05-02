@@ -1,6 +1,6 @@
 // category.js
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+import { getFirestore, collection, query, where, onSnapshot } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
 
 export async function loadCategories(containerId) {
     const container = document.getElementById(containerId);
@@ -9,7 +9,7 @@ export async function loadCategories(containerId) {
     const auth = getAuth();
     const db = getFirestore();
 
-    // Custom CSS for hiding scrollbar
+    // Custom CSS for hiding scrollbar and pill styling
     const styleHTML = `
         <style>
             .hide-scrollbar::-webkit-scrollbar { display: none; }
@@ -36,7 +36,7 @@ export async function loadCategories(containerId) {
             <button onclick="window.cAPI.openRequests()" class="relative flex items-center gap-1.5 px-3 py-1.5 rounded-[14px] border border-gray-200 dark:border-white/10 shrink-0 active:scale-95 transition-transform bg-white/50 dark:bg-white/5">
                 <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
                 <span class="text-xs font-bold opacity-80">Requests</span>
-                <span id="request-count-badge" class="hidden bg-electric text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm ml-0.5">0</span>
+                <span id="request-count-badge" class="hidden bg-electric text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm ml-0.5 transition-all">0</span>
             </button>
 
             <div class="w-[1px] h-5 bg-gray-300 dark:bg-white/20 shrink-0 mx-1"></div>
@@ -50,21 +50,19 @@ export async function loadCategories(containerId) {
         </div>
     `;
 
-    // --- GLOBAL API FOR CATEGORY CLICKS ---
+    // --- GLOBAL API FOR ACTIONS ---
     window.cAPI = {
         setCategory: (categoryName, btnElement) => {
-            // 1. Reset all pills to inactive
             const allPills = document.querySelectorAll('.category-pill');
             allPills.forEach(pill => {
                 pill.classList.remove('cat-active');
                 pill.classList.add('cat-inactive');
             });
 
-            // 2. Set clicked pill to active
             btnElement.classList.remove('cat-inactive');
             btnElement.classList.add('cat-active');
 
-            // 3. BROADCAST SIGNAL to chats.js
+            // Dispatch signal to chats.js
             const filterEvent = new CustomEvent('onCategoryChange', { 
                 detail: { category: categoryName } 
             });
@@ -72,33 +70,51 @@ export async function loadCategories(containerId) {
         },
 
         openRequests: () => {
-            // This will open a separate modal or redirect to a requests page later
-            alert("Opening Message Requests...\n(Pending Chat Requests will show here)");
+            // Redirects to a dedicated Message Requests page
+            window.location.href = 'req.html';
         }
     };
 
-    // --- FETCH PENDING REQUESTS COUNT (Backend Logic) ---
-    onAuthStateChanged(auth, async (user) => {
+    // --- REALTIME FIREBASE LISTENER FOR PENDING REQUESTS ---
+    let unsubscribeRequests = null;
+
+    onAuthStateChanged(auth, (user) => {
         if (user) {
-            try {
-                // In a real database, you might query a "chat_requests" collection
-                // Example query:
-                // const q = query(collection(db, "chat_requests"), where("toUid", "==", user.uid), where("status", "==", "pending"));
-                // const snapshot = await getDocs(q);
-                // const requestCount = snapshot.size;
+            // Target collection: 'chat_requests' where this user is the receiver and status is pending
+            const requestsRef = collection(db, "chat_requests");
+            const q = query(
+                requestsRef, 
+                where("toUid", "==", user.uid), 
+                where("status", "==", "pending")
+            );
 
-                // For UI demonstration, let's mock a dynamic number (e.g., 3 pending requests)
-                const mockRequestCount = 3; 
-
+            // onSnapshot gives us a live, realtime connection to the database
+            unsubscribeRequests = onSnapshot(q, (snapshot) => {
+                const requestCount = snapshot.size;
                 const badge = document.getElementById('request-count-badge');
-                if (badge && mockRequestCount > 0) {
-                    badge.innerText = mockRequestCount > 99 ? '99+' : mockRequestCount;
-                    badge.classList.remove('hidden');
-                    badge.classList.add('inline-flex', 'items-center', 'justify-center');
+                
+                if (badge) {
+                    if (requestCount > 0) {
+                        // Show badge with bouncy animation on update
+                        badge.innerText = requestCount > 99 ? '99+' : requestCount;
+                        badge.classList.remove('hidden');
+                        badge.classList.add('inline-flex', 'items-center', 'justify-center');
+                        
+                        // Small pop animation when count changes
+                        badge.classList.add('scale-125');
+                        setTimeout(() => badge.classList.remove('scale-125'), 200);
+                    } else {
+                        // Hide badge if no requests
+                        badge.classList.add('hidden');
+                        badge.classList.remove('inline-flex', 'items-center', 'justify-center');
+                    }
                 }
-            } catch (error) {
-                console.warn("Could not fetch requests count:", error);
-            }
+            }, (error) => {
+                console.warn("Error listening to chat requests:", error);
+            });
+        } else {
+            // Clean up listener if user logs out
+            if (unsubscribeRequests) unsubscribeRequests();
         }
     });
 }
