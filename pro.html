@@ -9,29 +9,58 @@
     <script>
         tailwind.config = { darkMode: 'class', theme: { extend: { colors: { electric: '#0052FF', darkBg: '#000000', darkSurface: '#0a0a0a' } } } }
     </script>
-    <script>document.documentElement.classList.add('dark');</script>
+    <script>
+        // Automatic Theme Detection
+        const theme = localStorage.getItem('theme_preference') || 'system';
+        if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
 
     <style>
         body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* EXACT Match with thoughts.js Bubble CSS */
+        /* THEME-ADAPTIVE NOTE BUBBLE */
         .profile-note {
             position: absolute; top: -38px; left: 50%; transform: translateX(-50%);
-            backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white; font-size: 11px; font-weight: 600; padding: 6px 12px;
-            border-radius: 14px; white-space: nowrap; max-width: 110px;
-            overflow: hidden; text-overflow: ellipsis; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 20;
+            backdrop-filter: blur(12px); 
+            background: rgba(255, 255, 255, 0.8); /* Light Mode Default */
+            border: 1px solid rgba(0, 0, 0, 0.1); 
+            color: #000; /* Light Mode Text */
+            font-size: 11px; font-weight: 700; padding: 6px 12px;
+            border-radius: 14px; white-space: nowrap; max-width: 120px;
+            overflow: hidden; text-overflow: ellipsis; box-shadow: 0 4px 15px rgba(0,0,0,0.08); z-index: 20;
         }
+        
+        .dark .profile-note {
+            background: rgba(255, 255, 255, 0.15); /* Dark Mode Default */
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff; /* Dark Mode Text */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+        }
+
+        /* Forces White Text + Shadow when a Custom Color (Red, Blue etc) is applied */
+        .profile-note.colored-bg {
+            color: #ffffff !important;
+            text-shadow: 0px 1px 3px rgba(0,0,0,0.4);
+            border-color: rgba(255,255,255,0.2) !important;
+        }
+
         .profile-note::after {
             content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%);
             border-width: 5px 5px 0; border-style: solid;
             border-color: inherit; border-bottom-color: transparent !important; border-left-color: transparent !important; border-right-color: transparent !important;
         }
+
+        /* EMOJI POSITIONING */
         .status-tilted {
-            position: absolute; top: -45px; right: 0px; font-size: 18px;
-            transform: rotate(15deg); filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8)); z-index: 30;
+            position: absolute; top: -45px; right: -8px; font-size: 20px;
+            transform: rotate(15deg); filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.15)); z-index: 30;
+        }
+        .dark .status-tilted {
+            filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.8));
         }
     </style>
 </head>
@@ -52,12 +81,12 @@
         </button>
     </header>
 
-    <main class="flex-1 w-full max-w-lg mx-auto pt-10 flex flex-col relative z-10">
+    <main class="flex-1 w-full max-w-lg mx-auto pt-16 flex flex-col relative z-10">
         
         <div class="flex items-center justify-between px-4">
             <div class="relative cursor-pointer active:scale-95 transition-transform shrink-0" onclick="window.proAPI.openPfpMenu()">
                 <div id="profile-thought-emoji" class="status-tilted hidden"></div>
-                <div id="profile-thought" class="profile-note hidden border-white/20"></div>
+                <div id="profile-thought" class="profile-note hidden"></div>
                 
                 <div class="w-[84px] h-[84px] rounded-full p-[2px] border-[2px] border-gray-300 dark:border-white/20" id="pfp-ring">
                     <img id="profile-pfp" src="" class="w-full h-full rounded-full object-cover border-2 border-white dark:border-[#0a0a0a]">
@@ -89,8 +118,8 @@
 
     <div id="modal-pfp-menu" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex-col items-center justify-center px-8 transition-opacity duration-300 opacity-0" onclick="window.proAPI.closeModal('modal-pfp-menu', 'pfp-menu-card')">
         <div id="pfp-menu-card" class="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 w-full rounded-[20px] shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col overflow-hidden" onclick="event.stopPropagation()">
-            <button onclick="window.proAPI.viewStory()" class="w-full px-4 py-4 text-center font-bold border-b border-gray-100 dark:border-white/10 hover:bg-white/5 active:bg-white/10 transition-colors">View Story</button>
-            <button onclick="window.proAPI.viewFullPfp()" class="w-full px-4 py-4 text-center font-bold hover:bg-white/5 active:bg-white/10 transition-colors">View Profile Picture</button>
+            <button onclick="window.proAPI.viewStory()" class="w-full px-4 py-4 text-center font-bold border-b border-gray-100 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/5 active:bg-gray-200 dark:active:bg-white/10 transition-colors">View Story</button>
+            <button onclick="window.proAPI.viewFullPfp()" class="w-full px-4 py-4 text-center font-bold hover:bg-gray-100 dark:hover:bg-white/5 active:bg-gray-200 dark:active:bg-white/10 transition-colors">View Profile Picture</button>
         </div>
     </div>
 
@@ -104,23 +133,23 @@
             <div class="w-12 h-1 bg-gray-300 dark:bg-white/20 rounded-full mx-auto my-2 mb-2"></div>
             
             <div class="p-2 flex flex-col gap-1">
-                <button onclick="window.proAPI.triggerModule('sharepf')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 rounded-xl transition-colors text-sm font-bold">
+                <button onclick="window.proAPI.triggerModule('sharepf')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors text-sm font-bold">
                     <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
                     <span>Share Profile</span>
                 </button>
-                <button onclick="window.proAPI.triggerModule('favusr')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 rounded-xl transition-colors text-sm font-bold">
+                <button onclick="window.proAPI.triggerModule('favusr')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors text-sm font-bold">
                     <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
                     <span>Add to Favorites</span>
                 </button>
-                <button onclick="window.proAPI.triggerModule('mute')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 rounded-xl transition-colors text-sm font-bold">
+                <button onclick="window.proAPI.triggerModule('mute')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition-colors text-sm font-bold">
                     <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
                     <span>Mute</span>
                 </button>
-                <button onclick="window.proAPI.triggerAction('unfollow')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-500/10 rounded-xl transition-colors text-sm font-bold text-red-500">
+                <button onclick="window.proAPI.triggerAction('unfollow')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors text-sm font-bold text-red-500">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6"></path></svg>
                     <span>Unfollow</span>
                 </button>
-                <button onclick="window.proAPI.triggerModule('blc')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-500/10 rounded-xl transition-colors text-sm font-bold text-red-500">
+                <button onclick="window.proAPI.triggerModule('blc')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-colors text-sm font-bold text-red-500">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
                     <span>Block User</span>
                 </button>
@@ -176,7 +205,7 @@
                 document.getElementById('stat-followers').innerText = userData.followersCount || 0;
                 document.getElementById('stat-following').innerText = userData.followingCount || 0;
 
-                // Load Current Thought / Note exactly like thoughts.js
+                // Load Thought & Apply Theme-Adaptive Logic
                 const thoughtDoc = await getDoc(doc(db, "thoughts", targetUid));
                 if (thoughtDoc.exists()) {
                     const tData = thoughtDoc.data();
@@ -184,10 +213,18 @@
                     const emojiEl = document.getElementById('profile-thought-emoji');
 
                     noteEl.innerText = tData.text;
-                    if(tData.bgColor) {
+                    
+                    if (tData.bgColor && tData.bgColor !== 'rgba(255,255,255,0.15)') {
+                        // User chose a custom color (Red, Blue etc)
                         noteEl.style.backgroundColor = tData.bgColor;
-                        noteEl.style.borderColor = tData.bgColor; // Ensure border matches background
+                        noteEl.classList.add('colored-bg'); // Forces white text + shadow for readability
+                    } else {
+                        // User chose the default transparent color.
+                        // We remove inline background so the CSS handles Dark/Light mode switching automatically.
+                        noteEl.style.backgroundColor = '';
+                        noteEl.classList.remove('colored-bg');
                     }
+                    
                     noteEl.classList.remove('hidden');
 
                     if(tData.statusEmoji) {
@@ -196,18 +233,19 @@
                     }
                 }
 
+                // Render Action Buttons
                 const btnContainer = document.getElementById('action-buttons-container');
                 if (isMe) {
                     document.getElementById('settings-btn').classList.remove('hidden');
                     btnContainer.innerHTML = `
-                        <button onclick="window.proAPI.triggerModule('edit')" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Edit profile</button>
-                        <button onclick="window.proAPI.triggerModule('sharepf')" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Share profile</button>
+                        <button onclick="window.proAPI.triggerModule('edit')" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors text-gray-900 dark:text-white">Edit profile</button>
+                        <button onclick="window.proAPI.triggerModule('sharepf')" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors text-gray-900 dark:text-white">Share profile</button>
                     `;
                 } else {
                     btnContainer.innerHTML = `
-                        <button onclick="window.proAPI.triggerAction('follow')" class="flex-1 bg-electric hover:bg-blue-600 py-1.5 rounded-lg text-white text-sm font-bold transition-colors">Follow</button>
-                        <button onclick="window.location.href='vchat.html?id=${targetUid}'" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Message</button>
-                        <button onclick="window.proAPI.openUserOptions()" class="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 rounded-lg transition-colors">
+                        <button onclick="window.proAPI.triggerAction('follow')" class="flex-1 bg-electric hover:bg-blue-600 py-1.5 rounded-lg text-white text-sm font-bold transition-colors shadow-md">Follow</button>
+                        <button onclick="window.location.href='vchat.html?id=${targetUid}'" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors text-gray-900 dark:text-white">Message</button>
+                        <button onclick="window.proAPI.openUserOptions()" class="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 rounded-lg transition-colors text-gray-900 dark:text-white">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
                         </button>
                     `;
@@ -236,7 +274,7 @@
             closeModal: (modalId, cardId) => {
                 const m = document.getElementById(modalId); const c = document.getElementById(cardId);
                 m.classList.remove('opacity-100'); m.classList.add('opacity-0'); 
-                if(c.id.includes('options') || c.id.includes('share')) { c.classList.remove('translate-y-0'); c.classList.add('translate-y-full'); }
+                if(c.id.includes('options')) { c.classList.remove('translate-y-0'); c.classList.add('translate-y-full'); }
                 else { c.classList.remove('scale-100'); c.classList.add('scale-95'); }
                 setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 300);
             },
@@ -256,7 +294,6 @@
             },
 
             triggerModule: async (moduleName) => {
-                // Safely close 3-dots modal if it's open
                 const userOptions = document.getElementById('modal-user-options');
                 if(userOptions && !userOptions.classList.contains('hidden')) {
                     window.proAPI.closeModal('modal-user-options', 'user-options-card');
@@ -266,8 +303,7 @@
                     const mod = await import(`./${moduleName}.js`);
                     if (mod && mod.init) mod.init(targetUid);
                 } catch (e) {
-                    console.warn(e);
-                    // Silently fail if file isn't created yet to maintain clean UX
+                    // Silently fail if file isn't created yet
                 }
             },
             triggerAction: (action) => {
