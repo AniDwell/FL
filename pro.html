@@ -16,9 +16,9 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Thought Bubble Styling (Same as thoughts.js) */
+        /* Premium Note Bubble Style matching thoughts.js */
         .profile-note {
-            position: absolute; top: -38px; left: 50%; transform: translateX(-50%);
+            position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
             backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);
             color: white; font-size: 11px; font-weight: 600; padding: 6px 12px;
             border-radius: 14px; white-space: nowrap; max-width: 120px;
@@ -29,9 +29,8 @@
             border-width: 5px 5px 0; border-style: solid;
             border-color: inherit; border-bottom-color: transparent !important; border-left-color: transparent !important; border-right-color: transparent !important;
         }
-        /* Tilted Emoji Styling (Same as thoughts.js) */
         .status-tilted {
-            position: absolute; top: -10px; right: -10px; font-size: 20px;
+            position: absolute; top: -45px; right: -5px; font-size: 18px;
             transform: rotate(15deg); filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8)); z-index: 30;
         }
     </style>
@@ -55,12 +54,11 @@
 
     <main class="flex-1 w-full max-w-lg mx-auto pt-10 flex flex-col relative z-10">
         
-        <div class="flex items-center justify-between px-4 mb-2">
+        <div class="flex items-center justify-between px-4">
             <div class="relative cursor-pointer active:scale-95 transition-transform shrink-0" onclick="window.proAPI.openPfpMenu()">
+                <div id="profile-thought-emoji" class="status-tilted hidden"></div>
+                <div id="profile-thought" class="profile-note hidden border-white/20"></div>
                 
-                <div id="profile-thought" class="profile-note hidden"></div>
-                <div id="profile-status-emoji" class="status-tilted hidden"></div>
-
                 <div class="w-[84px] h-[84px] rounded-full p-[2px] border-[2px] border-gray-300 dark:border-white/20" id="pfp-ring">
                     <img id="profile-pfp" src="" class="w-full h-full rounded-full object-cover border-2 border-white dark:border-[#0a0a0a]">
                 </div>
@@ -73,7 +71,7 @@
             </div>
         </div>
 
-        <div id="bio-widget" class="w-full"></div>
+        <div id="bio-widget" class="w-full px-4 mt-4 min-h-[40px]"></div>
 
         <div id="action-buttons-container" class="flex items-center gap-2 px-4 mt-6">
             <div class="w-full h-9 bg-gray-200 dark:bg-white/10 animate-pulse rounded-lg"></div>
@@ -156,7 +154,6 @@
             isMe = (targetUid === user.uid);
 
             try {
-                // Fetch User Details
                 const userDoc = await getDoc(doc(db, "users", targetUid));
                 userData = userDoc.exists() ? userDoc.data() : null;
 
@@ -165,7 +162,6 @@
                     return;
                 }
 
-                // Populate Static UI Elements
                 document.getElementById('header-username').innerHTML = `${userData.username} ${userData.isVerified ? '<svg class="w-4 h-4 text-electric inline-block" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>' : ''}`;
                 
                 const pfpUrl = userData.photoURL || pfpPlaceholder;
@@ -176,27 +172,26 @@
                 document.getElementById('stat-followers').innerText = userData.followersCount || 0;
                 document.getElementById('stat-following').innerText = userData.followingCount || 0;
 
-                // Load User Note (Styled exactly like thoughts.js)
+                // Load Current Thought / Note (Matching thoughts.js logic)
                 const thoughtDoc = await getDoc(doc(db, "thoughts", targetUid));
                 if (thoughtDoc.exists()) {
                     const tData = thoughtDoc.data();
-                    
                     const noteEl = document.getElementById('profile-thought');
+                    const emojiEl = document.getElementById('profile-thought-emoji');
+
                     noteEl.innerText = tData.text;
                     if(tData.bgColor) {
-                        noteEl.style.background = tData.bgColor;
+                        noteEl.style.backgroundColor = tData.bgColor;
                         noteEl.style.borderColor = tData.bgColor;
                     }
                     noteEl.classList.remove('hidden');
 
-                    const emojiEl = document.getElementById('profile-status-emoji');
                     if(tData.statusEmoji) {
                         emojiEl.innerText = tData.statusEmoji;
                         emojiEl.classList.remove('hidden');
                     }
                 }
 
-                // Setup Action Buttons
                 const btnContainer = document.getElementById('action-buttons-container');
                 if (isMe) {
                     document.getElementById('settings-btn').classList.remove('hidden');
@@ -214,7 +209,6 @@
                     `;
                 }
 
-                // Load all dynamic widgets sequentially
                 loadWidgets();
                 if(isMe) loadBottomNav();
 
@@ -257,16 +251,19 @@
                 requestAnimationFrame(() => { m.classList.remove('opacity-0'); m.classList.add('opacity-100'); img.classList.remove('scale-95'); img.classList.add('scale-100'); });
             },
 
-            // Dynamic Module Loader
             triggerModule: async (moduleName) => {
-                window.proAPI.closeModal('modal-user-options', 'user-options-card');
+                // Settings/Edit/Share etc.
+                const userOptions = document.getElementById('modal-user-options');
+                if(!userOptions.classList.contains('hidden')) {
+                    window.proAPI.closeModal('modal-user-options', 'user-options-card');
+                }
+                
                 try {
                     const mod = await import(`./${moduleName}.js`);
                     if (mod && mod.init) mod.init(targetUid);
-                    else alert(`Module logic executed: ${moduleName}.js`);
                 } catch (e) {
                     console.warn(e);
-                    alert(`Placeholder: Intended to open ${moduleName}.js`);
+                    // Just alert if the file isn't created yet, don't crash
                 }
             },
             triggerAction: (action) => {
@@ -297,7 +294,7 @@
                     const module = await import(widget.file);
                     if (module && module[widget.func]) module[widget.func](widget.id, targetUid);
                 } catch (error) {
-                    // Fail silently, no spinner to keep UI clean
+                    // No spinner, no text. Fails silently keeping UI clean.
                     document.getElementById(widget.id).innerHTML = ''; 
                 }
             }
