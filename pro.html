@@ -16,7 +16,6 @@
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Note Bubble Style */
         .profile-note {
             position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
             backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);
@@ -33,7 +32,7 @@
 </head>
 <body class="bg-white text-gray-900 dark:bg-darkBg dark:text-gray-100 min-h-screen w-screen flex flex-col transition-colors duration-300 pb-20">
 
-    <header class="sticky top-0 z-50 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-gray-200 dark:border-white/10 px-4 py-3 flex justify-between items-center">
+    <header class="sticky top-0 z-50 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-gray-200 dark:border-white/10 px-4 py-3 flex justify-between items-center h-[60px]">
         <div class="flex items-center gap-3">
             <button onclick="window.history.back()" class="active:scale-90 transition-transform">
                 <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
@@ -43,12 +42,12 @@
                 <svg id="verified-badge" class="w-4 h-4 text-electric hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>
             </h1>
         </div>
-        <button id="settings-btn" class="active:scale-90 transition-transform hidden">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        <button id="settings-btn" onclick="window.proAPI.triggerModule('settings')" class="active:scale-90 transition-transform hidden">
+            <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
         </button>
     </header>
 
-    <main class="w-full max-w-lg mx-auto pt-4 flex flex-col relative z-10">
+    <main class="flex-1 w-full max-w-lg mx-auto pt-6 flex flex-col relative z-10">
         
         <div class="flex items-center justify-between px-4">
             <div class="relative cursor-pointer active:scale-95 transition-transform shrink-0" onclick="window.proAPI.openPfpMenu()">
@@ -77,7 +76,7 @@
         <div class="w-full h-[1px] bg-gray-200 dark:bg-white/10 mt-5"></div>
 
         <div id="highlight-widget" class="w-full mt-2"></div>
-        <div id="categopost-widget" class="w-full mt-2 sticky top-[52px] z-40 bg-white dark:bg-black"></div>
+        <div id="categopost-widget" class="w-full mt-2 sticky top-[60px] z-40 bg-white dark:bg-black"></div>
         <div id="posts-widget" class="w-full flex-1 min-h-[300px]"></div>
 
     </main>
@@ -94,6 +93,42 @@
     <div id="modal-full-pfp" class="fixed inset-0 bg-black/95 z-[300] hidden flex-col items-center justify-center transition-opacity duration-300 opacity-0" onclick="window.proAPI.closeModal('modal-full-pfp', 'full-pfp-img')">
         <button class="absolute top-6 left-4 p-2 text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
         <img id="full-pfp-img" src="" class="w-full max-w-md object-contain transform scale-95 transition-transform duration-300">
+    </div>
+
+    <div id="modal-share" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex-col justify-end px-4 pb-6 transition-opacity duration-300 opacity-0" onclick="window.proAPI.closeModal('modal-share', 'share-card')">
+        <div id="share-card" class="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 w-full max-w-md mx-auto rounded-[24px] p-6 shadow-2xl transform translate-y-full transition-transform duration-300 flex flex-col items-center relative" onclick="event.stopPropagation()">
+            <button onclick="window.proAPI.closeModal('modal-share', 'share-card')" class="absolute top-4 right-4 p-2 text-gray-400 hover:text-black dark:hover:text-white transition-colors bg-gray-100 dark:bg-white/10 rounded-full">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+
+            <h3 class="text-lg font-bold mb-6">Share Profile</h3>
+            
+            <div id="qr-container" class="w-40 h-40 bg-white p-3 rounded-2xl shadow-sm mb-6 relative">
+                <svg class="w-full h-full text-black" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm13-2h-3v2h3v-2zm-3 4h3v2h-3v-2zm-2-2h-2v2h2v-2zm-2-2h2v2h-2v-2zm0 4h2v2h-2v-2zm4 2h2v2h-2v-2zm2-6h2v2h-2v-2z"/>
+                </svg>
+                <div class="absolute inset-0 flex items-center justify-center">
+                    <img id="qr-center-pfp" src="" class="w-8 h-8 rounded-full border-2 border-white object-cover hidden">
+                </div>
+            </div>
+
+            <div class="flex gap-4 mb-6 w-full justify-center overflow-x-auto hide-scrollbar px-2">
+                <button onclick="alert('Opening WhatsApp...')" class="w-12 h-12 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center shrink-0 active:scale-95 transition-transform"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.099.824z"/></svg></button>
+                <button onclick="alert('Opening Twitter/X...')" class="w-12 h-12 rounded-full bg-gray-200 dark:bg-white/10 text-gray-900 dark:text-white flex items-center justify-center shrink-0 active:scale-95 transition-transform"><svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></button>
+                <button onclick="alert('Opening Telegram...')" class="w-12 h-12 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0 active:scale-95 transition-transform"><svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></button>
+            </div>
+
+            <div class="flex gap-3 w-full">
+                <button onclick="window.proAPI.copyLink()" class="flex-1 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"></path></svg>
+                    Copy Link
+                </button>
+                <button onclick="window.proAPI.downloadQR()" class="flex-1 bg-electric hover:bg-blue-600 py-3 rounded-xl text-white text-sm font-bold transition-colors shadow-lg shadow-electric/20 flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Download
+                </button>
+            </div>
+        </div>
     </div>
 
     <div id="modal-user-options" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex-col justify-end px-4 pb-6 transition-opacity duration-300 opacity-0" onclick="window.proAPI.closeModal('modal-user-options', 'user-options-card')">
@@ -141,11 +176,9 @@
         let isMe = false;
         let userData = {};
 
-        // 1. Get Target User from URL
         const urlParams = new URLSearchParams(window.location.search);
         const queryId = urlParams.get('id');
 
-        // 2. Fetch Profile Data
         onAuthStateChanged(auth, async (user) => {
             if (!user) { window.location.href = 'login.html'; return; }
             
@@ -153,7 +186,6 @@
             isMe = (targetUid === user.uid);
 
             try {
-                // Load User Details
                 const userDoc = await getDoc(doc(db, "users", targetUid));
                 userData = userDoc.exists() ? userDoc.data() : null;
 
@@ -162,7 +194,6 @@
                     return;
                 }
 
-                // Populate UI
                 document.getElementById('header-username').innerHTML = `${userData.username} ${userData.isVerified ? '<svg class="w-4 h-4 text-electric inline-block" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>' : ''}`;
                 document.getElementById('profile-name').innerText = userData.displayName || '';
                 document.getElementById('profile-bio').innerText = userData.bio || '';
@@ -170,12 +201,13 @@
                 const pfpUrl = userData.photoURL || pfpPlaceholder;
                 document.getElementById('profile-pfp').src = pfpUrl;
                 document.getElementById('full-pfp-img').src = pfpUrl;
+                document.getElementById('qr-center-pfp').src = pfpUrl;
+                document.getElementById('qr-center-pfp').classList.remove('hidden');
 
                 document.getElementById('stat-posts').innerText = userData.postsCount || 0;
                 document.getElementById('stat-followers').innerText = userData.followersCount || 0;
                 document.getElementById('stat-following').innerText = userData.followingCount || 0;
 
-                // Load Note/Thought
                 const thoughtDoc = await getDoc(doc(db, "thoughts", targetUid));
                 if (thoughtDoc.exists()) {
                     const tData = thoughtDoc.data();
@@ -188,13 +220,12 @@
                     noteEl.classList.remove('hidden');
                 }
 
-                // Setup Buttons based on "isMe"
                 const btnContainer = document.getElementById('action-buttons-container');
                 if (isMe) {
                     document.getElementById('settings-btn').classList.remove('hidden');
                     btnContainer.innerHTML = `
-                        <button onclick="window.location.href='editpro.html'" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Edit profile</button>
-                        <button onclick="alert('Share link copied!')" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Share profile</button>
+                        <button onclick="window.proAPI.triggerModule('edit')" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Edit profile</button>
+                        <button onclick="window.proAPI.openShareModal()" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Share profile</button>
                     `;
                 } else {
                     btnContainer.innerHTML = `
@@ -206,7 +237,6 @@
                     `;
                 }
 
-                // Call Widgets Loading Sequence
                 loadWidgets();
                 if(isMe) loadBottomNav();
 
@@ -216,7 +246,7 @@
         });
 
 
-        // --- GLOBAL API FOR INLINE CLICKS ---
+        // --- GLOBAL API ---
         window.proAPI = {
             openPfpMenu: () => {
                 const m = document.getElementById('modal-pfp-menu'); const c = document.getElementById('pfp-menu-card');
@@ -228,10 +258,15 @@
                 m.classList.remove('hidden'); m.classList.add('flex');
                 requestAnimationFrame(() => { m.classList.remove('opacity-0'); m.classList.add('opacity-100'); c.classList.remove('translate-y-full'); c.classList.add('translate-y-0'); });
             },
+            openShareModal: () => {
+                const m = document.getElementById('modal-share'); const c = document.getElementById('share-card');
+                m.classList.remove('hidden'); m.classList.add('flex');
+                requestAnimationFrame(() => { m.classList.remove('opacity-0'); m.classList.add('opacity-100'); c.classList.remove('translate-y-full'); c.classList.add('translate-y-0'); });
+            },
             closeModal: (modalId, cardId) => {
                 const m = document.getElementById(modalId); const c = document.getElementById(cardId);
                 m.classList.remove('opacity-100'); m.classList.add('opacity-0'); 
-                if(c.id.includes('options')) { c.classList.remove('translate-y-0'); c.classList.add('translate-y-full'); }
+                if(c.id.includes('options') || c.id.includes('share')) { c.classList.remove('translate-y-0'); c.classList.add('translate-y-full'); }
                 else { c.classList.remove('scale-100'); c.classList.add('scale-95'); }
                 setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 300);
             },
@@ -250,16 +285,29 @@
                 requestAnimationFrame(() => { m.classList.remove('opacity-0'); m.classList.add('opacity-100'); img.classList.remove('scale-95'); img.classList.add('scale-100'); });
             },
 
-            // Dynamic Action Calls (Fav, Block, Mute)
+            // Share Functions
+            copyLink: () => {
+                const link = `${window.location.origin}/pro.html?id=${targetUid}`;
+                navigator.clipboard.writeText(link).then(() => {
+                    alert("Profile link copied to clipboard!");
+                    window.proAPI.closeModal('modal-share', 'share-card');
+                }).catch(err => alert("Failed to copy link"));
+            },
+            downloadQR: () => {
+                alert("QR Code downloading...");
+                window.proAPI.closeModal('modal-share', 'share-card');
+            },
+
+            // Dynamic Module Loader (Settings, Edit, Fav, Block, Mute)
             triggerModule: async (moduleName) => {
                 window.proAPI.closeModal('modal-user-options', 'user-options-card');
                 try {
                     const mod = await import(`./${moduleName}.js`);
                     if (mod && mod.init) mod.init(targetUid);
-                    else alert(`${moduleName}.js logic executed.`);
+                    else alert(`Module logic executed: ${moduleName}.js`);
                 } catch (e) {
                     console.warn(e);
-                    alert(`Placeholder: ${moduleName}.js triggered for user ${targetUid}`);
+                    alert(`Placeholder: Intended to open ${moduleName}.js`);
                 }
             },
             triggerAction: (action) => {
@@ -293,7 +341,7 @@
                     const module = await import(widget.file);
                     if (module && module[widget.func]) module[widget.func](widget.id, targetUid);
                 } catch (error) {
-                    createSpinner(widget.id); // Placeholder if file not created yet
+                    createSpinner(widget.id); 
                 }
             }
         }
