@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Profile | Artist Hub</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { colors: { electric: '#0052FF', darkBg: '#000000', darkSurface: '#0a0a0a' } } } }
+    </script>
+    <script>document.documentElement.classList.add('dark');</script>
+
+    <style>
+        body { overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Note Bubble Style */
+        .profile-note {
+            position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+            backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white; font-size: 11px; font-weight: 600; padding: 6px 12px;
+            border-radius: 14px; white-space: nowrap; max-width: 100px;
+            overflow: hidden; text-overflow: ellipsis; box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 20;
+        }
+        .profile-note::after {
+            content: ''; position: absolute; bottom: -5px; left: 10%;
+            border-width: 5px 5px 0; border-style: solid;
+            border-color: inherit; border-bottom-color: transparent !important; border-left-color: transparent !important; border-right-color: transparent !important;
+        }
+    </style>
+</head>
+<body class="bg-white text-gray-900 dark:bg-darkBg dark:text-gray-100 min-h-screen w-screen flex flex-col transition-colors duration-300 pb-20">
+
+    <header class="sticky top-0 z-50 bg-white/90 dark:bg-black/90 backdrop-blur-md border-b border-gray-200 dark:border-white/10 px-4 py-3 flex justify-between items-center">
+        <div class="flex items-center gap-3">
+            <button onclick="window.history.back()" class="active:scale-90 transition-transform">
+                <svg class="w-6 h-6 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+            <h1 id="header-username" class="text-xl font-extrabold tracking-tight flex items-center gap-1">
+                loading...
+                <svg id="verified-badge" class="w-4 h-4 text-electric hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>
+            </h1>
+        </div>
+        <button id="settings-btn" class="active:scale-90 transition-transform hidden">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+    </header>
+
+    <main class="w-full max-w-lg mx-auto pt-4 flex flex-col relative z-10">
+        
+        <div class="flex items-center justify-between px-4">
+            <div class="relative cursor-pointer active:scale-95 transition-transform shrink-0" onclick="window.proAPI.openPfpMenu()">
+                <div id="profile-thought" class="profile-note hidden bg-white/10 border-white/20"></div>
+                <div class="w-[84px] h-[84px] rounded-full p-[2px] border-[2px] border-gray-300 dark:border-white/20" id="pfp-ring">
+                    <img id="profile-pfp" src="" class="w-full h-full rounded-full object-cover border-2 border-white dark:border-[#0a0a0a]">
+                </div>
+            </div>
+
+            <div class="flex gap-6 text-center flex-1 justify-center ml-4">
+                <div class="flex flex-col"><span id="stat-posts" class="font-extrabold text-lg">0</span><span class="text-[10px] opacity-70">Posts</span></div>
+                <div class="flex flex-col"><span id="stat-followers" class="font-extrabold text-lg">0</span><span class="text-[10px] opacity-70">Followers</span></div>
+                <div class="flex flex-col"><span id="stat-following" class="font-extrabold text-lg">0</span><span class="text-[10px] opacity-70">Following</span></div>
+            </div>
+        </div>
+
+        <div class="px-4 mt-3">
+            <h2 id="profile-name" class="font-bold text-sm"></h2>
+            <p id="profile-bio" class="text-xs mt-1 leading-relaxed opacity-80 whitespace-pre-wrap"></p>
+        </div>
+
+        <div id="action-buttons-container" class="flex items-center gap-2 px-4 mt-5">
+            <div class="w-full h-8 bg-gray-200 dark:bg-white/10 animate-pulse rounded-lg"></div>
+        </div>
+
+        <div class="w-full h-[1px] bg-gray-200 dark:bg-white/10 mt-5"></div>
+
+        <div id="highlight-widget" class="w-full mt-2"></div>
+        <div id="categopost-widget" class="w-full mt-2 sticky top-[52px] z-40 bg-white dark:bg-black"></div>
+        <div id="posts-widget" class="w-full flex-1 min-h-[300px]"></div>
+
+    </main>
+
+    <div id="bottom-nav-container"></div>
+
+    <div id="modal-pfp-menu" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex-col items-center justify-center px-8 transition-opacity duration-300 opacity-0" onclick="window.proAPI.closeModal('modal-pfp-menu', 'pfp-menu-card')">
+        <div id="pfp-menu-card" class="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 w-full rounded-[20px] shadow-2xl transform scale-95 transition-transform duration-300 flex flex-col overflow-hidden" onclick="event.stopPropagation()">
+            <button onclick="window.proAPI.viewStory()" class="w-full px-4 py-4 text-center font-bold border-b border-gray-100 dark:border-white/10 hover:bg-white/5 active:bg-white/10 transition-colors">View Story</button>
+            <button onclick="window.proAPI.viewFullPfp()" class="w-full px-4 py-4 text-center font-bold hover:bg-white/5 active:bg-white/10 transition-colors">View Profile Picture</button>
+        </div>
+    </div>
+
+    <div id="modal-full-pfp" class="fixed inset-0 bg-black/95 z-[300] hidden flex-col items-center justify-center transition-opacity duration-300 opacity-0" onclick="window.proAPI.closeModal('modal-full-pfp', 'full-pfp-img')">
+        <button class="absolute top-6 left-4 p-2 text-white"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
+        <img id="full-pfp-img" src="" class="w-full max-w-md object-contain transform scale-95 transition-transform duration-300">
+    </div>
+
+    <div id="modal-user-options" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] hidden flex-col justify-end px-4 pb-6 transition-opacity duration-300 opacity-0" onclick="window.proAPI.closeModal('modal-user-options', 'user-options-card')">
+        <div id="user-options-card" class="bg-white dark:bg-[#111] border border-gray-200 dark:border-white/10 w-full max-w-md mx-auto rounded-[24px] p-2 shadow-2xl transform translate-y-full transition-transform duration-300 flex flex-col gap-1" onclick="event.stopPropagation()">
+            <div class="w-12 h-1 bg-gray-300 dark:bg-white/20 rounded-full mx-auto my-2 mb-2"></div>
+            
+            <div class="p-2 flex flex-col gap-1">
+                <button onclick="window.proAPI.triggerModule('favusr')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 rounded-xl transition-colors text-sm font-bold">
+                    <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+                    <span>Add to Favorites</span>
+                </button>
+                <button onclick="window.proAPI.triggerModule('mute')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 rounded-xl transition-colors text-sm font-bold">
+                    <svg class="w-5 h-5 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+                    <span>Mute</span>
+                </button>
+                <button onclick="window.proAPI.triggerAction('unfollow')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-500/10 rounded-xl transition-colors text-sm font-bold text-red-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7a4 4 0 11-8 0 4 4 0 018 0zM9 14a6 6 0 00-6 6v1h12v-1a6 6 0 00-6-6zM21 12h-6"></path></svg>
+                    <span>Unfollow</span>
+                </button>
+                <button onclick="window.proAPI.triggerModule('blc')" class="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-red-500/10 rounded-xl transition-colors text-sm font-bold text-red-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"></path></svg>
+                    <span>Block User</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-auth.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.10.0/firebase-firestore.js";
+
+        const app = initializeApp({
+            apiKey: "AIzaSyCANvRaHEUA7wkWMhC9_hFyrzU8cjoUo2U",
+            authDomain: "thuggish-2cd07.firebaseapp.com",
+            projectId: "thuggish-2cd07"
+        });
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const pfpPlaceholder = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='gray'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>`;
+
+        let targetUid = null;
+        let isMe = false;
+        let userData = {};
+
+        // 1. Get Target User from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryId = urlParams.get('id');
+
+        // 2. Fetch Profile Data
+        onAuthStateChanged(auth, async (user) => {
+            if (!user) { window.location.href = 'login.html'; return; }
+            
+            targetUid = queryId || user.uid;
+            isMe = (targetUid === user.uid);
+
+            try {
+                // Load User Details
+                const userDoc = await getDoc(doc(db, "users", targetUid));
+                userData = userDoc.exists() ? userDoc.data() : null;
+
+                if (!userData) {
+                    document.getElementById('header-username').innerText = "User not found";
+                    return;
+                }
+
+                // Populate UI
+                document.getElementById('header-username').innerHTML = `${userData.username} ${userData.isVerified ? '<svg class="w-4 h-4 text-electric inline-block" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>' : ''}`;
+                document.getElementById('profile-name').innerText = userData.displayName || '';
+                document.getElementById('profile-bio').innerText = userData.bio || '';
+                
+                const pfpUrl = userData.photoURL || pfpPlaceholder;
+                document.getElementById('profile-pfp').src = pfpUrl;
+                document.getElementById('full-pfp-img').src = pfpUrl;
+
+                document.getElementById('stat-posts').innerText = userData.postsCount || 0;
+                document.getElementById('stat-followers').innerText = userData.followersCount || 0;
+                document.getElementById('stat-following').innerText = userData.followingCount || 0;
+
+                // Load Note/Thought
+                const thoughtDoc = await getDoc(doc(db, "thoughts", targetUid));
+                if (thoughtDoc.exists()) {
+                    const tData = thoughtDoc.data();
+                    const noteEl = document.getElementById('profile-thought');
+                    noteEl.innerText = tData.text;
+                    if(tData.bgColor) {
+                        noteEl.style.backgroundColor = tData.bgColor;
+                        noteEl.style.borderColor = tData.bgColor;
+                    }
+                    noteEl.classList.remove('hidden');
+                }
+
+                // Setup Buttons based on "isMe"
+                const btnContainer = document.getElementById('action-buttons-container');
+                if (isMe) {
+                    document.getElementById('settings-btn').classList.remove('hidden');
+                    btnContainer.innerHTML = `
+                        <button onclick="window.location.href='editpro.html'" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Edit profile</button>
+                        <button onclick="alert('Share link copied!')" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Share profile</button>
+                    `;
+                } else {
+                    btnContainer.innerHTML = `
+                        <button onclick="window.proAPI.triggerAction('follow')" class="flex-1 bg-electric hover:bg-blue-600 py-1.5 rounded-lg text-white text-sm font-bold transition-colors">Follow</button>
+                        <button onclick="window.location.href='vchat.html?id=${targetUid}'" class="flex-1 bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 py-1.5 rounded-lg text-sm font-bold transition-colors">Message</button>
+                        <button onclick="window.proAPI.openUserOptions()" class="w-8 h-8 flex items-center justify-center bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 rounded-lg transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"></path></svg>
+                        </button>
+                    `;
+                }
+
+                // Call Widgets Loading Sequence
+                loadWidgets();
+                if(isMe) loadBottomNav();
+
+            } catch (error) {
+                console.error("Error loading profile:", error);
+            }
+        });
+
+
+        // --- GLOBAL API FOR INLINE CLICKS ---
+        window.proAPI = {
+            openPfpMenu: () => {
+                const m = document.getElementById('modal-pfp-menu'); const c = document.getElementById('pfp-menu-card');
+                m.classList.remove('hidden'); m.classList.add('flex');
+                requestAnimationFrame(() => { m.classList.remove('opacity-0'); m.classList.add('opacity-100'); c.classList.remove('scale-95'); c.classList.add('scale-100'); });
+            },
+            openUserOptions: () => {
+                const m = document.getElementById('modal-user-options'); const c = document.getElementById('user-options-card');
+                m.classList.remove('hidden'); m.classList.add('flex');
+                requestAnimationFrame(() => { m.classList.remove('opacity-0'); m.classList.add('opacity-100'); c.classList.remove('translate-y-full'); c.classList.add('translate-y-0'); });
+            },
+            closeModal: (modalId, cardId) => {
+                const m = document.getElementById(modalId); const c = document.getElementById(cardId);
+                m.classList.remove('opacity-100'); m.classList.add('opacity-0'); 
+                if(c.id.includes('options')) { c.classList.remove('translate-y-0'); c.classList.add('translate-y-full'); }
+                else { c.classList.remove('scale-100'); c.classList.add('scale-95'); }
+                setTimeout(() => { m.classList.remove('flex'); m.classList.add('hidden'); }, 300);
+            },
+            
+            viewStory: async () => {
+                window.proAPI.closeModal('modal-pfp-menu', 'pfp-menu-card');
+                try {
+                    const playerModule = await import('./plyrstry.js');
+                    if (playerModule && playerModule.playStory) { playerModule.playStory(targetUid); }
+                } catch (e) { alert("User has no active story or plyrstry.js missing."); }
+            },
+            viewFullPfp: () => {
+                window.proAPI.closeModal('modal-pfp-menu', 'pfp-menu-card');
+                const m = document.getElementById('modal-full-pfp'); const img = document.getElementById('full-pfp-img');
+                m.classList.remove('hidden'); m.classList.add('flex');
+                requestAnimationFrame(() => { m.classList.remove('opacity-0'); m.classList.add('opacity-100'); img.classList.remove('scale-95'); img.classList.add('scale-100'); });
+            },
+
+            // Dynamic Action Calls (Fav, Block, Mute)
+            triggerModule: async (moduleName) => {
+                window.proAPI.closeModal('modal-user-options', 'user-options-card');
+                try {
+                    const mod = await import(`./${moduleName}.js`);
+                    if (mod && mod.init) mod.init(targetUid);
+                    else alert(`${moduleName}.js logic executed.`);
+                } catch (e) {
+                    console.warn(e);
+                    alert(`Placeholder: ${moduleName}.js triggered for user ${targetUid}`);
+                }
+            },
+            triggerAction: (action) => {
+                window.proAPI.closeModal('modal-user-options', 'user-options-card');
+                if(action === 'follow') alert(`Follow request sent to ${targetUid}`);
+                if(action === 'unfollow') { if(confirm("Are you sure you want to unfollow?")) alert("Unfollowed"); }
+            }
+        };
+
+        // --- WIDGET LOADERS ---
+        async function loadBottomNav() {
+            try {
+                const navModule = await import('./bottom-nav.js');
+                if (navModule && navModule.initBottomNav) navModule.initBottomNav('bottom-nav-container');
+            } catch (error) {}
+        }
+
+        const widgetConfig = [
+            { id: 'highlight-widget', file: './highlight.js', func: 'loadHighlights' },
+            { id: 'categopost-widget', file: './categopost.js', func: 'loadPostCategories' },
+            { id: 'posts-widget', file: './posts.js', func: 'loadPosts' }
+        ];
+
+        const createSpinner = (id) => {
+            document.getElementById(id).innerHTML = `<div class="w-full py-8 flex justify-center opacity-40"><div class="w-5 h-5 border-2 border-gray-500 border-t-white rounded-full animate-spin"></div></div>`;
+        };
+
+        async function loadWidgets() {
+            for (const widget of widgetConfig) {
+                try {
+                    const module = await import(widget.file);
+                    if (module && module[widget.func]) module[widget.func](widget.id, targetUid);
+                } catch (error) {
+                    createSpinner(widget.id); // Placeholder if file not created yet
+                }
+            }
+        }
+    </script>
+</body>
+</html>
