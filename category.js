@@ -91,23 +91,3 @@ export async function loadCategories(containerId) {
         }
     });
 }
-nter');
-                        
-                        // Small pop animation when count changes
-                        badge.classList.add('scale-125');
-                        setTimeout(() => badge.classList.remove('scale-125'), 200);
-                    } else {
-                        // Hide badge if no requests
-                        badge.classList.add('hidden');
-                        badge.classList.remove('inline-flex', 'items-center', 'justify-center');
-                    }
-                }
-            }, (error) => {
-                console.warn("Error listening to chat requests:", error);
-            });
-        } else {
-            // Clean up listener if user logs out
-            if (unsubscribeRequests) unsubscribeRequests();
-        }
-    });
-}
