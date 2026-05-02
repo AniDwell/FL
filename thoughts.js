@@ -10,21 +10,26 @@ export async function loadThoughts(containerId) {
     const db = getFirestore();
     const pfpPlaceholder = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='gray'><path d='M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z'/></svg>`;
 
-    // --- INJECT CUSTOM MODALS (Z-INDEX 200) ---
+    // --- INJECT CUSTOM MODALS (Z-INDEX 99999 TO AVOID BOTTOM NAV OVERLAP) ---
     if (!document.getElementById('thoughts-modals-wrapper')) {
         const modalWrapper = document.createElement('div');
         modalWrapper.id = 'thoughts-modals-wrapper';
         modalWrapper.innerHTML = `
-            <div id="modal-create-thought" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] hidden flex-col items-center justify-center px-4 transition-opacity duration-300 opacity-0">
+            <div id="modal-create-thought" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] hidden flex-col items-center justify-center px-4 transition-opacity duration-300 opacity-0">
                 <div class="bg-[#111] border border-white/10 w-full max-w-sm rounded-[24px] p-5 shadow-2xl transform scale-95 transition-transform duration-300" id="create-thought-card">
                     <h3 class="text-lg font-bold mb-4 text-center" id="create-modal-title">Share a Thought</h3>
                     
-                    <div class="flex justify-center gap-3 mb-4" id="color-picker">
-                        <button onclick="window.tAPI.pickColor('rgba(255,255,255,0.15)', this)" class="w-8 h-8 rounded-full bg-white/20 border-2 border-white focus:outline-none ring-2 ring-transparent transition-all"></button>
-                        <button onclick="window.tAPI.pickColor('rgba(0,82,255,0.6)', this)" class="w-8 h-8 rounded-full bg-electric border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
-                        <button onclick="window.tAPI.pickColor('rgba(220,38,38,0.6)', this)" class="w-8 h-8 rounded-full bg-red-600 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
-                        <button onclick="window.tAPI.pickColor('rgba(22,163,74,0.6)', this)" class="w-8 h-8 rounded-full bg-green-600 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
-                        <button onclick="window.tAPI.pickColor('rgba(147,51,234,0.6)', this)" class="w-8 h-8 rounded-full bg-purple-600 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                    <div class="flex flex-wrap justify-center gap-3 mb-4 px-2" id="color-picker">
+                        <button onclick="window.tAPI.pickColor('rgba(255,255,255,0.15)', this)" class="w-7 h-7 rounded-full bg-white/20 border-2 border-white focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(0,82,255,0.6)', this)" class="w-7 h-7 rounded-full bg-electric border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(220,38,38,0.6)', this)" class="w-7 h-7 rounded-full bg-red-600 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(22,163,74,0.6)', this)" class="w-7 h-7 rounded-full bg-green-600 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(147,51,234,0.6)', this)" class="w-7 h-7 rounded-full bg-purple-600 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(249,115,22,0.6)', this)" class="w-7 h-7 rounded-full bg-orange-500 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(236,72,153,0.6)', this)" class="w-7 h-7 rounded-full bg-pink-500 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(20,184,166,0.6)', this)" class="w-7 h-7 rounded-full bg-teal-500 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(234,179,8,0.6)', this)" class="w-7 h-7 rounded-full bg-yellow-500 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
+                        <button onclick="window.tAPI.pickColor('rgba(75,85,99,0.8)', this)" class="w-7 h-7 rounded-full bg-gray-600 border-2 border-transparent focus:outline-none ring-2 ring-transparent transition-all"></button>
                     </div>
 
                     <div class="relative w-full">
@@ -34,12 +39,12 @@ export async function loadThoughts(containerId) {
                     
                     <div class="flex gap-3">
                         <button onclick="window.tAPI.closeModal('modal-create-thought', 'create-thought-card')" class="flex-1 bg-white/5 hover:bg-white/10 py-3 rounded-xl text-sm font-bold transition-colors">Cancel</button>
-                        <button onclick="window.tAPI.submitThought()" class="flex-1 bg-electric hover:bg-blue-600 py-3 rounded-xl text-white text-sm font-bold transition-colors shadow-lg shadow-electric/20">Share</button>
+                        <button id="share-thought-btn" onclick="window.tAPI.submitThought()" class="flex-1 bg-electric hover:bg-blue-600 py-3 rounded-xl text-white text-sm font-bold transition-colors shadow-lg shadow-electric/20 flex items-center justify-center">Share</button>
                     </div>
                 </div>
             </div>
 
-            <div id="modal-emoji-picker" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[210] hidden flex-col items-center justify-center px-4 transition-opacity duration-300 opacity-0">
+            <div id="modal-emoji-picker" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] hidden flex-col items-center justify-center px-4 transition-opacity duration-300 opacity-0">
                 <div class="bg-[#111] border border-white/10 w-full max-w-[250px] rounded-[24px] p-5 shadow-2xl transform scale-95 transition-transform duration-300" id="emoji-picker-card">
                     <h3 class="text-sm font-bold mb-4 text-center opacity-70">Pick a Status</h3>
                     <div class="grid grid-cols-4 gap-4 text-2xl text-center mb-4">
@@ -57,7 +62,7 @@ export async function loadThoughts(containerId) {
                 </div>
             </div>
 
-            <div id="modal-manage-thought" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] hidden flex-col items-center justify-end sm:justify-center transition-opacity duration-300 opacity-0 pb-10 sm:pb-0 px-4">
+            <div id="modal-manage-thought" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] hidden flex-col items-center justify-end sm:justify-center transition-opacity duration-300 opacity-0 pb-10 sm:pb-0 px-4">
                 <div class="bg-[#111] border border-white/10 w-full max-w-sm rounded-[24px] p-5 shadow-2xl transform translate-y-10 sm:translate-y-0 sm:scale-95 transition-all duration-300 flex flex-col max-h-[80vh]" id="manage-thought-card">
                     
                     <div class="flex justify-between items-center mb-4">
@@ -81,7 +86,7 @@ export async function loadThoughts(containerId) {
                 </div>
             </div>
 
-            <div id="modal-view-thought" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[200] hidden flex-col items-center justify-center px-4 transition-opacity duration-300 opacity-0">
+            <div id="modal-view-thought" class="fixed inset-0 bg-black/90 backdrop-blur-md z-[99999] hidden flex-col items-center justify-center px-4 transition-opacity duration-300 opacity-0">
                 <div class="bg-[#111] border border-white/10 w-full max-w-sm rounded-[24px] p-5 shadow-2xl transform scale-95 transition-transform duration-300" id="view-thought-card">
                     
                     <div class="flex flex-col items-center mb-6 relative">
@@ -148,7 +153,7 @@ export async function loadThoughts(containerId) {
     window.tAPI = window.tAPI || {};
     window.tAPI.cachedThoughts = {};
     window.tAPI.filteredThoughts = [];
-    window.tAPI.visibleCount = 15; // Initial load count
+    window.tAPI.visibleCount = 15;
     window.tAPI.myThought = null;
     window.tAPI.myPfp = pfpPlaceholder;
 
@@ -160,7 +165,7 @@ export async function loadThoughts(containerId) {
             const userDoc = await getDoc(doc(db, "users", user.uid));
             currentUserData = userDoc.exists() ? userDoc.data() : { uid: user.uid, following: [] };
             window.tAPI.myPfp = currentUserData.photoURL || pfpPlaceholder;
-            const followingList = currentUserData.following || []; // Array of UIDs user follows
+            const followingList = currentUserData.following || [];
 
             // 2. Fetch My Own Thought
             const myThoughtDoc = await getDoc(doc(db, "thoughts", user.uid));
@@ -180,7 +185,7 @@ export async function loadThoughts(containerId) {
             });
             window.tAPI.filteredThoughts = allFollowedThoughts;
 
-            // Render function so we can re-render on "Load More"
+            // Render slider function
             window.tAPI.renderSlider = () => {
                 let html = styleHTML + `<div class="w-full flex gap-4 px-4 overflow-x-auto snap-x hide-scrollbar pt-14 pb-2">`;
 
@@ -218,7 +223,7 @@ export async function loadThoughts(containerId) {
                     `;
                 }
 
-                // --- RENDER OTHERS' THOUGHTS (Paginated) ---
+                // --- RENDER OTHERS' THOUGHTS ---
                 const visibleThoughts = window.tAPI.filteredThoughts.slice(0, window.tAPI.visibleCount);
                 
                 visibleThoughts.forEach(thought => {
@@ -226,7 +231,6 @@ export async function loadThoughts(containerId) {
                     const borderClass = isViewed ? "border-[1.5px] border-gray-400 dark:border-white/20" : "border-[2.5px] border-electric dark:border-white";
                     const statusHTML = thought.statusEmoji ? `<div class="status-tilted">${thought.statusEmoji}</div>` : '';
                     
-                    // Note: Assuming followed users are online for this UI. You can conditionally render the green dot based on a DB field.
                     html += `
                         <div class="relative flex flex-col items-center gap-1.5 min-w-[68px] cursor-pointer snap-start shrink-0" onclick="window.tAPI.openViewModal('${thought.id}')">
                             ${statusHTML}
@@ -242,7 +246,6 @@ export async function loadThoughts(containerId) {
                     `;
                 });
 
-                // --- LOAD MORE BUTTON ---
                 if (window.tAPI.filteredThoughts.length > window.tAPI.visibleCount) {
                     html += `
                         <div class="flex flex-col items-center justify-center gap-1.5 min-w-[68px] cursor-pointer snap-start shrink-0" onclick="window.tAPI.loadMore()">
@@ -258,7 +261,6 @@ export async function loadThoughts(containerId) {
                 container.innerHTML = html;
             };
 
-            // Initial Render
             window.tAPI.renderSlider();
 
             // --- API METHODS ---
@@ -310,17 +312,35 @@ export async function loadThoughts(containerId) {
                 document.getElementById('current-status-emoji').innerText = selectedEmoji;
                 window.tAPI.closeModal('modal-emoji-picker', 'emoji-picker-card', () => { window.tAPI.openModal('modal-create-thought', 'create-thought-card'); });
             };
+            
+            // Fixed Submit (Edit Mode Safe)
             window.tAPI.submitThought = async () => {
                 const text = document.getElementById('thought-input-text').value.trim();
                 if (!text) return;
-                const t = window.tAPI.cachedThoughts[user.uid] || { likes: [], replies: [], viewedBy: [] }; 
-                await setDoc(doc(db, "thoughts", user.uid), {
-                    uid: user.uid, username: currentUserData.username || 'You', photoURL: window.tAPI.myPfp,
-                    text: text, bgColor: selectedColor, statusEmoji: selectedEmoji === '😀' ? null : selectedEmoji,
-                    timestamp: new Date().toISOString(), likes: t.likes, replies: t.replies, viewedBy: t.viewedBy
-                });
-                window.tAPI.closeModal('modal-create-thought', 'create-thought-card');
-                loadThoughts(containerId); // Refresh whole widget
+
+                const submitBtn = document.getElementById('share-thought-btn');
+                submitBtn.innerText = "Sharing..."; submitBtn.disabled = true;
+
+                // Safe fallback to prevent undefined array crash
+                const t = window.tAPI.cachedThoughts[user.uid] || {}; 
+                const likes = t.likes || [];
+                const replies = t.replies || [];
+                const viewedBy = t.viewedBy || [];
+
+                try {
+                    await setDoc(doc(db, "thoughts", user.uid), {
+                        uid: user.uid, username: currentUserData.username || 'You', photoURL: window.tAPI.myPfp,
+                        text: text, bgColor: selectedColor, statusEmoji: selectedEmoji === '😀' ? null : selectedEmoji,
+                        timestamp: new Date().toISOString(), likes: likes, replies: replies, viewedBy: viewedBy
+                    });
+                    submitBtn.innerText = "Share"; submitBtn.disabled = false;
+                    window.tAPI.closeModal('modal-create-thought', 'create-thought-card');
+                    loadThoughts(containerId); // Refresh widget
+                } catch (err) {
+                    console.error(err);
+                    alert("Failed to share.");
+                    submitBtn.innerText = "Share"; submitBtn.disabled = false;
+                }
             };
 
             // Manage
